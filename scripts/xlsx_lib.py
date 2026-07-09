@@ -342,22 +342,49 @@ class XlsxQuote:
 
         cx = width_px * PX_TO_EMU
         cy = height_px * PX_TO_EMU
+
+        # Template có thể khai báo namespace vẽ hình theo 2 kiểu khác nhau:
+        #   <xdr:wsDr xmlns:xdr="...">  (có tiền tố xdr:)
+        #   <wsDr xmlns="...">          (namespace mặc định, KHÔNG tiền tố)
+        # Phải tự phát hiện đúng kiểu template đang dùng, nếu không thẻ mới
+        # chèn vào sẽ không khớp namespace gốc -> Excel không hiện ảnh
+        # (hoặc tệ hơn, chèn không thành công mà không báo lỗi).
+        drawing_src = self._read(dp)
+        m_root = re.search(r'<(\w+:)?wsDr\b', drawing_src)
+        prefix = (m_root.group(1) or "") if m_root else "xdr:"
+        p = prefix  # "" hoặc "xdr:"
+
+        # Dùng oneCellAnchor: kích thước ảnh hiển thị do <ext cx,cy> quyết định
+        # trực tiếp (không phụ thuộc độ rộng/cao ô), tránh bị co nhỏ khi ô có
+        # autoheight. Lưu ý bắt buộc: mỗi thẻ <a:...> phải tự khai báo
+        # xmlns:a riêng (không kế thừa được từ thẻ tự đóng liền trước) —
+        # đây chính là lỗi khiến ảnh từng không hiện ra dù XML "trông có vẻ đúng".
         anchor = (
-            '<xdr:oneCellAnchor>'
-            '<xdr:from><xdr:col>%d</xdr:col><xdr:colOff>%d</xdr:colOff>'
-            '<xdr:row>%d</xdr:row><xdr:rowOff>%d</xdr:rowOff></xdr:from>'
-            '<xdr:ext cx="%d" cy="%d"/>'
-            '<xdr:pic>'
-            '<xdr:nvPicPr><xdr:cNvPr id="%d" name="ProductImage%d"/>'
-            '<xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'
-            '<xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="%s"/>'
-            '<a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'
-            '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="%d" cy="%d"/></a:xfrm>'
-            '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>'
-            '</xdr:pic><xdr:clientData/></xdr:oneCellAnchor>'
-        ) % (col, col_off_px * PX_TO_EMU, row, row_off_px * PX_TO_EMU, cx, cy,
-             self._next_img_id, self._next_img_id, rid, cx, cy)
-        self._write(dp, self._read(dp).replace("</xdr:wsDr>", anchor + "</xdr:wsDr>"))
+            '<{p}oneCellAnchor>'
+            '<{p}from><{p}col>{col}</{p}col><{p}colOff>{coloff}</{p}colOff>'
+            '<{p}row>{row}</{p}row><{p}rowOff>{rowoff}</{p}rowOff></{p}from>'
+            '<{p}ext cx="{cx}" cy="{cy}"/>'
+            '<{p}pic>'
+            '<{p}nvPicPr><{p}cNvPr id="{picid}" name="ProductImage{picid}" descr="Picture"/>'
+            '<{p}cNvPicPr/></{p}nvPicPr>'
+            '<{p}blipFill><a:blip xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+            'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="{rid}"/>'
+            '<a:stretch xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:fillRect/></a:stretch></{p}blipFill>'
+            '<{p}spPr><a:xfrm xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+            '<a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
+            '<a:prstGeom xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" prst="rect">'
+            '<avLst/></a:prstGeom><a:noFill xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>'
+            '<a:ln xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" w="0">'
+            '<a:noFill/><a:prstDash val="solid"/></a:ln></{p}spPr>'
+            '</{p}pic><{p}clientData/></{p}oneCellAnchor>'
+        ).format(p=p, col=col, coloff=col_off_px * PX_TO_EMU, row=row,
+                 rowoff=row_off_px * PX_TO_EMU, cx=cx, cy=cy,
+                 picid=self._next_img_id, rid=rid)
+
+        close_tag = "</{p}wsDr>".format(p=p)
+        if close_tag not in drawing_src:
+            raise RuntimeError("Không tìm thấy thẻ đóng %s trong %s — cấu trúc drawing khác thường" % (close_tag, dp))
+        self._write(dp, drawing_src.replace(close_tag, anchor + close_tag))
         self._next_img_id += 1
         self._next_rid += 1
 

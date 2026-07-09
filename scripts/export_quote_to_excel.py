@@ -98,9 +98,22 @@ def so_tien_bang_chu(n):
 
 
 def download_image(url, local_path):
-    """Download ảnh từ URL về local"""
-    if not url or url.startswith('data:'):
-        return local_path if url.startswith('data:') else None
+    """Lưu ảnh sản phẩm về local_path. Hỗ trợ 2 dạng:
+    - data:image/...;base64,xxxx  (ảnh người dùng tải lên trực tiếp trong app)
+    - http(s)://...                (ảnh từ URL bên ngoài)"""
+    if not url:
+        return None
+    if url.startswith('data:'):
+        try:
+            import base64
+            header, b64data = url.split(',', 1)
+            raw = base64.b64decode(b64data)
+            with open(local_path, 'wb') as f:
+                f.write(raw)
+            return local_path
+        except Exception as e:
+            print(f"⚠️  Không thể giải mã ảnh base64: {e}", file=sys.stderr)
+            return None
 
     try:
         import urllib.request
