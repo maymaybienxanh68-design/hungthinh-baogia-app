@@ -75,6 +75,39 @@ class XlsxQuote:
         """Đặt SỐ cho ô (đơn giá, số lượng, hoặc cache thành tiền)."""
         self._edit_cell(ref, "<v>%s</v>" % value)
 
+    def set_formula_cache(self, ref, value):
+        """Giữ nguyên công thức <f> đang có sẵn trong ô (vd =G15*H15, =SUM(...)),
+        chỉ ghi lại giá trị <v> đã tính sẵn để các phần mềm/trình xem KHÔNG tự
+        tính lại công thức (Zalo preview, xem nhanh online...) vẫn hiển thị đúng
+        số ngay lập tức thay vì để trống."""
+        s = self._read(self.sheet_path)
+        pat = re.compile(r'(<c r="%s"(?:\s+[a-zA-Z0-9:]+="[^"]*")*\s*>)(.*?)</c>'
+                         % re.escape(ref), re.S)
+        m = pat.search(s)
+        if not m:
+            raise ValueError("Không tìm thấy ô %s trong %s" % (ref, self.sheet_path))
+        inner = m.group(2)
+        fm = re.search(r'<f[^>]*>.*?</f>|<f[^>]*/>', inner, re.S)
+        f_part = fm.group(0) if fm else ""
+        new_inner = f_part + "<v>%s</v>" % value
+        self._write(self.sheet_path, s[:m.start()] + m.group(1) + new_inner + "</c>" + s[m.end():])
+
+    def force_recalc(self):
+        """Bật fullCalcOnLoad để Excel/LibreOffice luôn tính lại toàn bộ công thức
+        ngay khi mở file (phòng khi có phần mềm không nhận cache <v>)."""
+        rel = "xl/workbook.xml"
+        if not self._exists(rel):
+            return
+        s = self._read(rel)
+        if "<calcPr" in s:
+            if "fullCalcOnLoad" not in s:
+                s = re.sub(r'<calcPr ', '<calcPr fullCalcOnLoad="1" ', s, count=1)
+            else:
+                s = re.sub(r'fullCalcOnLoad="[^"]*"', 'fullCalcOnLoad="1"', s, count=1)
+        else:
+            s = s.replace("</workbook>", '<calcPr fullCalcOnLoad="1"/></workbook>')
+        self._write(rel, s)
+
     def replace_in_strings(self, old, new):
         """Thay chuỗi con trong sharedStrings.xml — tiện cho đổi NGÀY trong rich-text."""
         rel = "xl/sharedStrings.xml"

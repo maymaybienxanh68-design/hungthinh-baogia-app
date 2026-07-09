@@ -186,6 +186,9 @@ def export_quote(data_json_str):
         wb.set_text(f"F{row}", item.get('unit', ''))
         wb.set_number(f"G{row}", qty)
         wb.set_number(f"H{row}", price)
+        # Cột Thành tiền (I) đã có sẵn công thức =G*H trong mẫu; ghi cache giá trị
+        # để hiện ngay số tiền kể cả khi phần mềm xem không tự tính lại công thức
+        wb.set_formula_cache(f"I{row}", qty * price)
 
         # Tự động xuống dòng + tự co giãn chiều cao theo nội dung (tên/mô tả dài)
         wb.set_row_autoheight(row)
@@ -209,6 +212,17 @@ def export_quote(data_json_str):
         else:
             print(f"  ✅ Row {row}: {item['name']}")
 
+    # Ghi cache giá trị cho dòng "Cộng tiền hàng" (I23 = SUM), VAT (I24, mặc định 0)
+    # và "TỔNG CỘNG THANH TOÁN" (I25 = I23+I24) để hiện số ngay, không bị trống
+    vat_amount = 0
+    grand_total = total_amount + vat_amount
+    try:
+        wb.set_formula_cache("I23", total_amount)
+        wb.set_number("I24", vat_amount)
+        wb.set_formula_cache("I25", grand_total)
+    except Exception as e:
+        print(f"⚠️  Lỗi ghi cache tổng cộng: {e}", file=sys.stderr)
+
     # Định dạng dấu chấm cho các dòng tổng cộng (Cộng tiền hàng / VAT / Tổng cộng)
     for cell in ("I23", "I24", "I25"):
         try:
@@ -221,6 +235,13 @@ def export_quote(data_json_str):
     wb.set_text("B27", f"Bằng chữ: {bang_chu}")
     try:
         wb.set_shrink_to_fit("B27")
+    except Exception:
+        pass
+
+    # Bắt buộc tính lại toàn bộ công thức khi mở file (phòng khi phần mềm nào đó
+    # không đọc cache <v>, ví dụ Excel/LibreOffice desktop)
+    try:
+        wb.force_recalc()
     except Exception:
         pass
 
