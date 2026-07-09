@@ -79,8 +79,10 @@ def export_quote(data_json_str):
     print(f"✅ Khách: {customer}")
     print(f"✅ Sản phẩm: {len(data['items'])}")
 
-    # Mở mẫu (fixed version)
+    # Mở mẫu (fixed version) - ưu tiên tìm trong scripts/, sau đó templates/
     mau_file = Path(__file__).parent / "Bao_Gia_Mau_FIX.xlsx"
+    if not mau_file.exists():
+        mau_file = Path(__file__).parent.parent / "templates" / "Bao_Gia_Mau_FIX.xlsx"
     if not mau_file.exists():
         mau_file = Path(__file__).parent / "Bao_Gia_Mẫu.xlsx"
     if not mau_file.exists():
