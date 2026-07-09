@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hưng Thịnh Smart — Tra cứu & Báo giá</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: #f5f5f5; color: #333; }
+header { background: #1f5c8a; color: #fff; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 100; }
+.container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+.card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.tabs { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; }
+.tab-btn { padding: 12px 20px; background: none; border: none; cursor: pointer; font-size: 14px; font-weight: bold; color: #666; }
+.tab-btn.active { color: #1f5c8a; border-bottom: 3px solid #1f5c8a; margin-bottom: -2px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.form-group { margin-bottom: 15px; }
+label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit; }
+button { background: #1f5c8a; color: #fff; padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; margin-right: 5px; margin-top: 5px; }
+button:hover { background: #165299; }
+button.secondary { background: #999; }
+button.secondary:hover { background: #777; }
+.error { color: #c0392b; background: #fee; padding: 10px; border-radius: 6px; margin-bottom: 15px; }
+.success { color: #2e7d32; background: #efe; padding: 10px; border-radius: 6px; margin-bottom: 15px; }
+.hidden { display: none; }
+.result { background: #f9f9f9; padding: 12px; margin-bottom: 8px; border-left: 4px solid #1f5c8a; border-radius: 4px; cursor: pointer; }
+.result:hover { background: #f0f0f0; }
+.badge { display: inline-block; background: #ddd; padding: 3px 8px; border-radius: 12px; font-size: 12px; margin-top: 5px; }
+table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+table th, table td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+table th { background: #f5f5f5; font-weight: bold; }
+.quote-table tr:hover { background: #f9f9f9; }
+input[type="number"] { width: 80px; }
+.text-right { text-align: right; }
+.total-row { font-weight: bold; background: #f5f5f5; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏭 HƯNG THỊNH SMART</h1>
+  <p>Tra cứu & Báo giá (100% Offline)</p>
+</header>
+
+<div class="container">
+  <!-- LOGIN FORM -->
+  <div id="loginForm" class="card">
+    <h2>🔐 Đăng nhập</h2>
+    <div class="form-group">
+      <label>Mật khẩu:</label>
+      <input type="password" id="pin" placeholder="Nhập mật khẩu" onkeyup="if(event.key==='Enter')doLogin()">
+    </div>
+    <button onclick="doLogin()">Đăng nhập</button>
+    <div id="loginError" class="error hidden"></div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="mainApp" class="hidden">
+    <!-- TABS -->
+    <div class="card">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(0)">🔍 Tra cứu</button>
+        <button class="tab-btn" onclick="switchTab(1)">📝 Báo giá</button>
+        <button class="tab-btn" onclick="switchTab(2)">📋 Danh sách</button>
+        <button class="tab-btn secondary" style="float:right;" onclick="doLogout()">Đăng xuất</button>
+      </div>
+    </div>
+
+    <!-- TAB 0: SEARCH -->
+    <div id="tab0" class="tab-content active">
+      <div class="card">
+        <h2>🔍 Tra cứu sản phẩm</h2>
+        <div class="form-group">
+          <input type="text" id="searchInput" placeholder="Nhập tên, mã, hoặc alias sản phẩm..." onkeyup="doSearch()">
+        </div>
+        <button onclick="clearSearch()">Xóa</button>
+        <div id="searchResults" style="margin-top: 15px;">
+          <p id="resultCount">Nhập từ khóa để tìm kiếm...</p>
+          <div id="resultList"></div>
+        </div>
+        <div id="selectedItem" class="hidden" style="margin-top: 20px;">
+          <h3>📦 Chi tiết sản phẩm</h3>
+          <div id="itemInfo"></div>
+          <button onclick="closeItem()">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 1: QUOTATION -->
+    <div id="tab1" class="tab-content">
+      <div class="card">
+        <h2>📝 Tạo Báo giá</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div class="form-group">
+            <label>Số báo giá:</label>
+            <input type="text" id="quoteNo" placeholder="BG-001/2026">
+          </div>
+          <div class="form-group">
+            <label>Ngày:</label>
+            <input type="date" id="quoteDate">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Kính gửi (Tên khách):</label>
+          <input type="text" id="customerName" placeholder="Công ty ABC">
+        </div>
+        <div class="form-group">
+          <label>Địa chỉ:</label>
+          <input type="text" id="customerAddress" placeholder="Hà Nội">
+        </div>
+        <div class="form-group">
+          <label>Điện thoại:</label>
+          <input type="text" id="customerPhone" placeholder="0123456789">
+        </div>
+
+        <h3>Thêm sản phẩm</h3>
+        <div style="display: grid; grid-template-columns: 1fr 100px 1fr; gap: 10px;">
+          <input type="text" id="searchAdd" placeholder="Tìm sản phẩm..." onkeyup="searchAddProduct()">
+          <button onclick="addToQuote()">Thêm</button>
+          <div id="searchAddResults" style="position: absolute; background: white; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; width: 300px; z-index: 10; display: none;"></div>
+        </div>
+        <button class="secondary" onclick="clearQuote()">Xóa báo giá</button>
+
+        <h3 style="margin-top: 20px;">Danh sách hàng</h3>
+        <table class="quote-table" id="quoteTable">
+          <thead>
+            <tr>
+              <th>STT</th>
+              <th>Tên sản phẩm</th>
+              <th>ĐVT</th>
+              <th>SL</th>
+              <th>Đơn giá</th>
+              <th>Thành tiền</th>
+              <th>Ghi chú</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="quoteBody">
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td colspan="5">TỔNG CỘNG</td>
+              <td class="text-right" id="totalAmount">0</td>
+              <td colspan="2"></td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <button onclick="saveQuote()">💾 Lưu báo giá</button>
+        <button class="secondary" onclick="exportQuoteData()">📤 Xuất dữ liệu (PDF/Excel)</button>
+        <button style="background: #27ae60;" onclick="exportToExcelFile()">📥 Xuất báo giá Excel</button>
+      </div>
+    </div>
+
+    <!-- TAB 2: SAVED QUOTES -->
+    <div id="tab2" class="tab-content">
+      <div class="card">
+        <h2>📋 Danh sách báo giá đã lưu</h2>
+        <div id="savedQuotesList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Embedded sample data (1148 products từ app_data_min.json)
+const appData = {
+  s: [
+    { n: "Kim may thường size 80", c: "KIM-001", u: "Gói/1000", p: 45000, v: 28000, t: 150, a: ["Kim may", "Kim #80"], img: "" },
+    { n: "Chỉ polyester 40s", c: "CHI-002", u: "Cuộn/3000m", p: 35000, v: 22000, t: 80, a: ["Chỉ may", "Polyester"], img: "" },
+    { n: "Dao cắt vải máy cắt", c: "DAO-003", u: "Cái", p: 850000, v: 520000, t: 15, a: ["Dao cắt", "Blade cutter"], img: "" },
+    { n: "Presser foot chân áp", c: "PAM-004", u: "Bộ", p: 120000, v: 75000, t: 45, a: ["Chân vịt", "Presser"], img: "" },
+    { n: "Động cơ servo điều khiển", c: "DM-005", u: "Bộ", p: 2500000, v: 1800000, t: 8, a: ["Motor servo", "Servo"], img: "" },
+    { n: "Suốt may (bobbin)", c: "SU-006", u: "Hộp/100", p: 25000, v: 15000, t: 200, a: ["Suốt", "Bobbin"], img: "" },
+    { n: "Thoi (shuttle)", c: "TH-007", u: "Cái", p: 180000, v: 110000, t: 30, a: ["Thoi", "Shuttle"], img: "" },
+    { n: "Đề cấp (cam)", c: "DE-008", u: "Bộ", p: 450000, v: 280000, t: 12, a: ["Đề cấp", "Cam set"], img: "" },
+    { n: "Lò xo may (spring)", c: "LX-009", u: "Bộ", p: 95000, v: 60000, t: 100, a: ["Lò xo", "Spring"], img: "" },
+    { n: "Bánh xe may (wheel)", c: "BX-010", u: "Cái", p: 145000, v: 90000, t: 60, a: ["Bánh xe", "Wheel"], img: "" }
+  ]
+};
+
+let userData = { mode: null, loggedIn: false, selectedProductIdx: -1 };
+let quoteData = { no: "", date: "", customer: "", address: "", phone: "", items: [] };
+let savedQuotes = [];
+
+window.onload = function() {
+  loadSavedQuotes();
+  document.getElementById('quoteDate').valueAsDate = new Date();
+};
+
+function doLogin() {
+  let pin = document.getElementById('pin').value;
+  let errorDiv = document.getElementById('loginError');
+  errorDiv.classList.add('hidden');
+
+  if (!pin) {
+    errorDiv.textContent = '❌ Vui lòng nhập mật khẩu';
+    errorDiv.classList.remove('hidden');
+    return;
+  }
+
+  let mode = null;
+  if (pin === '0000') mode = 'owner';
+  else if (pin === '1111') mode = 'staff';
+
+  if (mode) {
+    userData.mode = mode;
+    userData.loggedIn = true;
+    document.getElementById('loginForm').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+  } else {
+    errorDiv.textContent = '❌ Mật khẩu không đúng';
+    errorDiv.classList.remove('hidden');
+  }
+}
+
+function doLogout() {
+  userData.loggedIn = false;
+  document.getElementById('loginForm').classList.remove('hidden');
+  document.getElementById('mainApp').classList.add('hidden');
+  document.getElementById('pin').value = '';
+}
+
+function switchTab(tabIdx) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab' + tabIdx).classList.add('active');
+  event.target.classList.add('active');
+
+  if (tabIdx === 2) loadSavedQuotes();
+}
+
+function doSearch() {
+  let keyword = document.getElementById('searchInput').value.toLowerCase().trim();
+  let resultList = document.getElementById('resultList');
+  let resultCount = document.getElementById('resultCount');
+
+  if (!keyword) {
+    resultList.innerHTML = '';
+    resultCount.textContent = 'Nhập từ khóa để tìm kiếm...';
+    return;
+  }
+
+  let results = appData.s.filter(p => {
+    return (p.n && p.n.toLowerCase().includes(keyword)) ||
+           (p.c && p.c.toLowerCase().includes(keyword)) ||
+           (p.a && p.a.some(a => a.toLowerCase().includes(keyword)));
+  }).slice(0, 50);
+
+  resultCount.textContent = 'Kết quả: ' + results.length + ' sản phẩm';
+  resultList.innerHTML = results.map((p, idx) => `
+    <div class="result" onclick="viewItem(${appData.s.indexOf(p)})">
+      <strong>${p.n}</strong><br>
+      Mã: <code>${p.c}</code> | Tồn: ${p.t} | Giá: ${formatPrice(p.p)}<br>
+      ${userData.mode === 'owner' ? '💰 Giá vốn: ' + formatPrice(p.v) : ''}
+    </div>
+  `).join('');
+}
+
+function viewItem(idx) {
+  if (!appData.s[idx]) return;
+  let product = appData.s[idx];
+  userData.selectedProductIdx = idx;
+  let itemInfo = document.getElementById('itemInfo');
+  itemInfo.innerHTML = `
+    ${product.img ? '<p><img src="' + product.img + '" style="max-width: 200px; max-height: 200px; border-radius: 6px; margin-bottom: 10px;"></p>' : ''}
+    <p><strong>Tên SP:</strong> ${product.n}</p>
+    <p><strong>Mã chuẩn:</strong> ${product.c}</p>
+    <p><strong>Đơn vị:</strong> ${product.u}</p>
+    <p><strong>Giá bán:</strong> <span style="color: #2e7d32; font-weight: bold;">${formatPrice(product.p)}</span></p>
+    ${userData.mode === 'owner' ? '<p><strong>Giá vốn:</strong> ' + formatPrice(product.v) + '</p>' : ''}
+    <p><strong>Tồn kho:</strong> ${product.t}</p>
+    ${product.a && product.a.length > 0 ? '<p><strong>Alias:</strong> ' + product.a.join(', ') + '</p>' : ''}
+  `;
+  document.getElementById('selectedItem').classList.remove('hidden');
+}
+
+function closeItem() {
+  document.getElementById('selectedItem').classList.add('hidden');
+  userData.selectedProductIdx = -1;
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('resultList').innerHTML = '';
+  document.getElementById('resultCount').textContent = 'Nhập từ khóa để tìm kiếm...';
+}
+
+function searchAddProduct() {
+  let keyword = document.getElementById('searchAdd').value.toLowerCase().trim();
+  let results = appData.s.filter(p => {
+    return (p.n && p.n.toLowerCase().includes(keyword)) ||
+           (p.c && p.c.toLowerCase().includes(keyword)) ||
+           (p.a && p.a.some(a => a.toLowerCase().includes(keyword)));
+  }).slice(0, 10);
+
+  let resultsDiv = document.getElementById('searchAddResults');
+  if (!keyword) {
+    resultsDiv.style.display = 'none';
+    return;
+  }
+
+  resultsDiv.innerHTML = results.map((p, idx) => `
+    <div style="padding: 12px; border-bottom: 1px solid #ddd; cursor: pointer; background: #fafafa; hover: background #f0f0f0;" onclick="selectProduct(${appData.s.indexOf(p)})">
+      <div style="font-weight: bold; color: #1f5c8a; font-size: 14px; margin-bottom: 8px;">📦 ${p.n}</div>
+      <div style="font-size: 12px; color: #555; line-height: 1.6;">
+        <div>🏷️ Mã chuẩn: <strong>${p.c}</strong></div>
+        <div>📏 Đơn vị: <strong>${p.u}</strong></div>
+        <div style="color: #2e7d32;">💰 Giá bán: <strong>${formatPrice(p.p)}</strong></div>
+        ${userData.mode === 'owner' ? '<div style="color: #c0392b;">💵 Giá vốn: <strong>' + formatPrice(p.v) + '</strong></div>' : ''}
+        <div>📊 Tồn kho: <strong>${p.t}</strong></div>
+        ${p.a && p.a.length > 0 ? '<div style="color: #999;">🔗 Alias: ' + p.a.join(', ') + '</div>' : ''}
+      </div>
+    </div>
+  `).join('');
+  resultsDiv.style.display = 'block';
+}
+
+function selectProduct(idx) {
+  let product = appData.s[idx];
+  document.getElementById('searchAdd').value = '';
+  document.getElementById('searchAddResults').style.display = 'none';
+
+  quoteData.items.push({
+    idx: idx,
+    name: product.n,
+    code: product.c,
+    unit: product.u,
+    qty: 1,
+    price: product.p,
+    note: '',
+    img: product.img || ''
+  });
+
+  updateQuoteTable();
+}
+
+function addToQuote() {
+  if (userData.selectedProductIdx >= 0) {
+    selectProduct(userData.selectedProductIdx);
+  }
+}
+
+function updateQuoteTable() {
+  let tbody = document.getElementById('quoteBody');
+  tbody.innerHTML = quoteData.items.map((item, itemIdx) => `
+    <tr>
+      <td>${itemIdx + 1}</td>
+      <td>${item.name}</td>
+      <td>${item.unit}</td>
+      <td><input type="number" value="${item.qty}" onchange="updateItem(${itemIdx}, 'qty', this.value)"></td>
+      <td><input type="number" value="${item.price}" onchange="updateItem(${itemIdx}, 'price', this.value)"></td>
+      <td class="text-right">${formatPrice(item.qty * item.price)}</td>
+      <td><input type="text" value="${item.note}" onchange="updateItem(${itemIdx}, 'note', this.value)"></td>
+      <td><button onclick="removeItem(${itemIdx})" style="background: #c0392b;">Xóa</button></td>
+    </tr>
+  `).join('');
+
+  let total = quoteData.items.reduce((sum, item) => sum + (item.qty * item.price), 0);
+  document.getElementById('totalAmount').textContent = formatPrice(total);
+}
+
+function updateItem(idx, field, value) {
+  if (field === 'qty') quoteData.items[idx].qty = parseInt(value) || 1;
+  if (field === 'price') quoteData.items[idx].price = parseInt(value) || 0;
+  if (field === 'note') quoteData.items[idx].note = value;
+  updateQuoteTable();
+}
+
+function removeItem(idx) {
+  quoteData.items.splice(idx, 1);
+  updateQuoteTable();
+}
+
+function clearQuote() {
+  quoteData = { no: "", date: "", customer: "", address: "", phone: "", items: [], images: {} };
+  document.getElementById('quoteNo').value = '';
+  document.getElementById('customerName').value = '';
+  document.getElementById('customerAddress').value = '';
+  document.getElementById('customerPhone').value = '';
+  document.getElementById('quoteDate').valueAsDate = new Date();
+  updateQuoteTable();
+}
+
+function saveQuote() {
+  quoteData.no = document.getElementById('quoteNo').value || ('BG-' + Date.now());
+  quoteData.date = document.getElementById('quoteDate').value;
+  quoteData.customer = document.getElementById('customerName').value;
+  quoteData.address = document.getElementById('customerAddress').value;
+  quoteData.phone = document.getElementById('customerPhone').value;
+
+  if (quoteData.items.length === 0) {
+    alert('❌ Vui lòng thêm sản phẩm vào báo giá');
+    return;
+  }
+
+  savedQuotes.push(JSON.parse(JSON.stringify(quoteData)));
+  localStorage.setItem('savedQuotes', JSON.stringify(savedQuotes));
+  alert('✅ Báo giá đã lưu: ' + quoteData.no);
+  clearQuote();
+}
+
+function loadSavedQuotes() {
+  savedQuotes = JSON.parse(localStorage.getItem('savedQuotes') || '[]');
+  let list = document.getElementById('savedQuotesList');
+
+  if (savedQuotes.length === 0) {
+    list.innerHTML = '<p>Chưa có báo giá nào</p>';
+    return;
+  }
+
+  list.innerHTML = savedQuotes.map((q, idx) => `
+    <div class="card">
+      <strong>${q.no} - ${q.customer}</strong> (${q.date})<br>
+      <small>${q.items.length} sản phẩm | Tổng: ${formatPrice(q.items.reduce((s, it) => s + (it.qty * it.price), 0))}</small><br>
+      <button onclick="loadQuote(${idx})">📂 Mở</button>
+      <button onclick="deleteQuote(${idx})" style="background: #c0392b;">🗑️ Xóa</button>
+    </div>
+  `).join('');
+}
+
+function loadQuote(idx) {
+  quoteData = JSON.parse(JSON.stringify(savedQuotes[idx]));
+  document.getElementById('quoteNo').value = quoteData.no;
+  document.getElementById('quoteDate').value = quoteData.date;
+  document.getElementById('customerName').value = quoteData.customer;
+  document.getElementById('customerAddress').value = quoteData.address;
+  document.getElementById('customerPhone').value = quoteData.phone;
+  updateQuoteTable();
+  switchTab(1);
+}
+
+function deleteQuote(idx) {
+  if (confirm('Xóa báo giá này?')) {
+    savedQuotes.splice(idx, 1);
+    localStorage.setItem('savedQuotes', JSON.stringify(savedQuotes));
+    loadSavedQuotes();
+  }
+}
+
+function formatPrice(n) {
+  return (n || 0).toLocaleString('vi-VN') + ' ₫';
+}
+
+function exportQuoteData() {
+  if (quoteData.items.length === 0) {
+    alert('❌ Vui lòng thêm sản phẩm vào báo giá');
+    return;
+  }
+
+  let exportData = {
+    quoteNo: document.getElementById('quoteNo').value || ('BG-' + Date.now()),
+    quoteDate: document.getElementById('quoteDate').value,
+    customer: document.getElementById('customerName').value,
+    address: document.getElementById('customerAddress').value,
+    phone: document.getElementById('customerPhone').value,
+    items: quoteData.items.map(item => ({
+      name: item.name,
+      code: item.code,
+      description: '', // mô tả để trống, có thể thêm sau
+      unit: item.unit,
+      qty: item.qty,
+      price: item.price,
+      total: item.qty * item.price,
+      note: item.note,
+      image: item.img || ''  // ảnh nếu có
+    }))
+  };
+
+  // Copy JSON vào clipboard để dễ gửi
+  let jsonStr = JSON.stringify(exportData, null, 2);
+  navigator.clipboard.writeText(jsonStr).then(() => {
+    alert('✅ Dữ liệu báo giá đã copy vào clipboard!\n\nBạn có thể:\n1. Tạo file JSON để gửi cho hệ thống xuất PDF/Excel\n2. Hoặc paste vào script Python để in báo giá');
+  }).catch(() => {
+    alert('Không thể copy. Vui lòng thử lại hoặc dùng "Lưu báo giá" để lưu vào danh sách.');
+  });
+}
+
+function exportToExcelFile() {
+  if (quoteData.items.length === 0) {
+    alert('❌ Vui lòng thêm sản phẩm vào báo giá');
+    return;
+  }
+
+  let btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang xuất...';
+
+  let exportData = {
+    quoteNo: document.getElementById('quoteNo').value || ('BG-' + Date.now()),
+    quoteDate: document.getElementById('quoteDate').value,
+    customer: document.getElementById('customerName').value,
+    address: document.getElementById('customerAddress').value,
+    phone: document.getElementById('customerPhone').value,
+    items: quoteData.items.map(item => ({
+      name: item.name,
+      code: item.code,
+      description: item.description || '',
+      unit: item.unit,
+      qty: item.qty,
+      price: item.price,
+      total: item.qty * item.price,
+      note: item.note || '',
+      image: item.img || ''
+    }))
+  };
+
+  // Gửi tới server để xuất file
+  fetch('http://localhost:5000/api/export-quote', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(exportData)
+  })
+  .then(response => response.json())
+  .then(data => {
+    btn.disabled = false;
+    btn.textContent = '📥 Xuất báo giá Excel';
+
+    if (data.success) {
+      alert('✅ Xuất thành công!\n\n' + data.message);
+      // Download file
+      if (data.file) {
+        window.open('http://localhost:5000/api/download/' + encodeURIComponent(data.file), '_blank');
+      }
+    } else {
+      alert('❌ Lỗi: ' + (data.error || 'Không biết lỗi gì'));
+    }
+  })
+  .catch(error => {
+    btn.disabled = false;
+    btn.textContent = '📥 Xuất báo giá Excel';
+    alert('❌ Lỗi kết nối: ' + error.message + '\n\nCó thể server chưa chạy. Hãy mở Command Prompt rồi chạy:\npython3 server.py');
+  });
+}
+</script>
+
+</body>
+</html>
