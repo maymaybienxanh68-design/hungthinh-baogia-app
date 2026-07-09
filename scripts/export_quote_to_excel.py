@@ -20,10 +20,82 @@ sys.path.insert(0, str(Path(__file__).parent))
 try:
     from xlsx_lib import XlsxQuote
     from prep_image import prep_image
-except ImportError:
-    print("❌ Không tìm thấy xlsx_lib hoặc prep_image.")
-    print("Vui lòng đảm bảo file nằm trong cùng thư mục.")
+except ImportError as e:
+    print(f"❌ Không tìm thấy xlsx_lib hoặc prep_image: {e}", file=sys.stderr)
+    print("Vui lòng đảm bảo file nằm trong cùng thư mục.", file=sys.stderr)
     sys.exit(1)
+
+def format_vn_money(n):
+    """Định dạng số tiền dùng DẤU CHẤM ngăn cách hàng nghìn, vd 850000 -> '850.000'."""
+    try:
+        n = int(round(float(n)))
+    except (ValueError, TypeError):
+        return str(n)
+    return f"{n:,}".replace(",", ".")
+
+
+_VN_DIGITS = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"]
+_VN_UNITS = ["", "nghìn", "triệu", "tỷ"]
+
+
+def _vn_read_3(n, full=True):
+    """Đọc 1 nhóm 3 chữ số ra chữ (0-999)."""
+    tram, chuc, dv = n // 100, (n % 100) // 10, n % 10
+    words = []
+    if tram > 0 or full:
+        words.append(_VN_DIGITS[tram] + " trăm")
+    if chuc == 0:
+        if tram > 0 and dv > 0:
+            words.append("linh")
+    elif chuc == 1:
+        words.append("mười")
+    else:
+        words.append(_VN_DIGITS[chuc] + " mươi")
+    if dv > 0:
+        if chuc >= 2 and dv == 1:
+            words.append("mốt")
+        elif chuc >= 1 and dv == 5:
+            words.append("lăm")
+        else:
+            words.append(_VN_DIGITS[dv])
+    return " ".join(words)
+
+
+def so_tien_bang_chu(n):
+    """Đọc số tiền VNĐ ra chữ tiếng Việt, vd 1250000 -> 'Một triệu hai trăm năm mươi nghìn đồng'."""
+    try:
+        n = int(round(float(n)))
+    except (ValueError, TypeError):
+        return ""
+    if n == 0:
+        return "Không đồng"
+    negative = n < 0
+    n = abs(n)
+
+    groups = []
+    tmp = n
+    while tmp > 0:
+        groups.append(tmp % 1000)
+        tmp //= 1000
+    # groups[0] = hàng đơn vị (0-999), groups[1] = nghìn, groups[2] = triệu, groups[3] = tỷ ...
+
+    parts = []
+    for i in range(len(groups) - 1, -1, -1):
+        g = groups[i]
+        if g == 0:
+            continue
+        is_first = (i == len(groups) - 1)
+        text = _vn_read_3(g, full=not is_first)
+        unit = _VN_UNITS[i] if i < len(_VN_UNITS) else ("tỷ " * (i - 2))
+        parts.append(text + (" " + unit if unit else ""))
+
+    result = " ".join(parts).strip()
+    result = " ".join(result.split())  # gộp khoảng trắng thừa
+    result = result[0].upper() + result[1:] + " đồng"
+    if negative:
+        result = "Âm " + result
+    return result
+
 
 def download_image(url, local_path):
     """Download ảnh từ URL về local"""
@@ -86,7 +158,7 @@ def export_quote(data_json_str):
     if not mau_file.exists():
         mau_file = Path(__file__).parent / "Bao_Gia_Mẫu.xlsx"
     if not mau_file.exists():
-        print(f"❌ Không tìm thấy mẫu")
+        print(f"❌ Không tìm thấy mẫu (đã thử: {Path(__file__).parent}, {Path(__file__).parent.parent / 'templates'})", file=sys.stderr)
         return False
 
     wb = XlsxQuote(str(mau_file))
@@ -102,13 +174,24 @@ def export_quote(data_json_str):
     temp_dir = Path(__file__).parent / "temp_images"
     temp_dir.mkdir(exist_ok=True)
 
+    total_amount = 0
     for idx, item in enumerate(data['items'][:8], start=15):  # Max 8 dòng
         row = idx
+        qty = item.get('qty', 1) or 0
+        price = item.get('price', 0) or 0
+        total_amount += qty * price
+
         wb.set_text(f"C{row}", item.get('name', ''))
         wb.set_text(f"D{row}", item.get('description', ''))
         wb.set_text(f"F{row}", item.get('unit', ''))
-        wb.set_number(f"G{row}", item.get('qty', 1))
-        wb.set_number(f"H{row}", item.get('price', 0))
+        wb.set_number(f"G{row}", qty)
+        wb.set_number(f"H{row}", price)
+
+        # Tự động xuống dòng + tự co giãn chiều cao theo nội dung (tên/mô tả dài)
+        wb.set_row_autoheight(row)
+        # Cột tiền: luôn hiện dấu CHẤM ngăn cách hàng nghìn, không phụ thuộc máy/locale
+        wb.set_number_format(f"H{row}", "[$-42A]#,##0")
+        wb.set_number_format(f"I{row}", "[$-42A]#,##0")
 
         # Xử lý ảnh
         image_url = item.get('image', '')
@@ -125,6 +208,21 @@ def export_quote(data_json_str):
                 print(f"  ✅ Row {row}: {item['name']} (không có ảnh)")
         else:
             print(f"  ✅ Row {row}: {item['name']}")
+
+    # Định dạng dấu chấm cho các dòng tổng cộng (Cộng tiền hàng / VAT / Tổng cộng)
+    for cell in ("I23", "I24", "I25"):
+        try:
+            wb.set_number_format(cell, "[$-42A]#,##0")
+        except Exception:
+            pass
+
+    # Số tiền bằng chữ - điền đầy đủ, hiện trên 1 hàng ngang (không xuống dòng, tự co chữ nếu dài)
+    bang_chu = so_tien_bang_chu(total_amount)
+    wb.set_text("B27", f"Bằng chữ: {bang_chu}")
+    try:
+        wb.set_shrink_to_fit("B27")
+    except Exception:
+        pass
 
     # Lưu Excel
     out_name = f"BaoGia_{customer.replace(' ', '_')}_{datetime.now().strftime('%d%m%Y%H%M%S')}.xlsx"

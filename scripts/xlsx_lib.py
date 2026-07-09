@@ -129,6 +129,116 @@ class XlsxQuote:
         self._write(self.sheet_path,
                     re.sub(r'<row r="%d"[^>]*>' % int(row), repl, s, count=1))
 
+    def set_row_autoheight(self, row):
+        """Bỏ chiều cao cố định của dòng, để Excel tự tính chiều cao theo nội dung
+        (dùng cho các dòng có xuống dòng tự động / wrap text)."""
+        s = self._read(self.sheet_path)
+        def repl(m):
+            tag = m.group(0)
+            tag = re.sub(r'\s+ht="[^"]*"', '', tag)
+            tag = re.sub(r'\s+customHeight="[^"]*"', '', tag)
+            return tag
+        self._write(self.sheet_path,
+                    re.sub(r'<row r="%d"[^>]*>' % int(row), repl, s, count=1))
+
+    # ---------- styles (number format / shrink-to-fit) ----------
+    def _styles(self):
+        return self._read("xl/styles.xml")
+
+    def _cell_style_id(self, ref):
+        s = self._read(self.sheet_path)
+        m = re.search(r'<c r="%s"((?:\s+[a-zA-Z0-9:]+="[^"]*")*)\s*(?:/>|>)' % re.escape(ref), s)
+        if not m:
+            raise ValueError("Không tìm thấy ô %s" % ref)
+        sm = re.search(r'\s+s="([^"]*)"', m.group(1))
+        return int(sm.group(1)) if sm else 0
+
+    def _set_cell_style_id(self, ref, style_id):
+        s = self._read(self.sheet_path)
+        pat = re.compile(r'(<c r="%s")((?:\s+[a-zA-Z0-9:]+="[^"]*")*)(\s*(?:/>|>))' % re.escape(ref))
+        def repl(m):
+            attrs = m.group(2)
+            if re.search(r'\s+s="[^"]*"', attrs):
+                attrs = re.sub(r'\s+s="[^"]*"', ' s="%d"' % style_id, attrs)
+            else:
+                attrs = ' s="%d"' % style_id + attrs
+            return m.group(1) + attrs + m.group(3)
+        self._write(self.sheet_path, pat.sub(repl, s, count=1))
+
+    def _ensure_numfmt(self, fmt_code):
+        """Đăng ký (hoặc lấy lại) 1 numFmt tuỳ chỉnh trong styles.xml, trả về numFmtId."""
+        s = self._styles()
+        ids = [int(x) for x in re.findall(r'<numFmt numFmtId="(\d+)"', s)]
+        existing = re.search(r'<numFmt numFmtId="(\d+)" formatCode="%s"/>' % re.escape(fmt_code), s)
+        if existing:
+            return int(existing.group(1))
+        new_id = max(ids + [163]) + 1
+        new_numfmt = '<numFmt numFmtId="%d" formatCode="%s"/>' % (new_id, fmt_code)
+        m_self_close = re.search(r'<numFmts count="(\d+)"\s*/>', s)
+        m_open = re.search(r'<numFmts count="(\d+)">', s)
+        if m_open:
+            cnt = int(m_open.group(1)) + 1
+            s2 = s[:m_open.start()] + '<numFmts count="%d">' % cnt + new_numfmt + s[m_open.end():]
+        elif m_self_close:
+            s2 = s[:m_self_close.start()] + '<numFmts count="1">' + new_numfmt + '</numFmts>' + s[m_self_close.end():]
+        else:
+            # chưa có khối numFmts nào — chèn mới ngay sau thẻ mở <styleSheet ...>
+            m0 = re.search(r'(<styleSheet[^>]*>)', s)
+            s2 = s[:m0.end()] + '<numFmts count="1">' + new_numfmt + '</numFmts>' + s[m0.end():]
+        self._write("xl/styles.xml", s2)
+        return new_id
+
+    def _clone_xf_with_numfmt(self, orig_style_id, numfmt_id):
+        s = self._styles()
+        m = re.search(r'<cellXfs count="(\d+)">(.*?)</cellXfs>', s, re.S)
+        count = int(m.group(1))
+        body = m.group(2)
+        xfs = re.findall(r'<xf\b[^>]*?(?:/>|>.*?</xf>)', body, re.S)
+        orig = xfs[orig_style_id]
+        if re.search(r'numFmtId="\d+"', orig):
+            new_xf = re.sub(r'numFmtId="\d+"', 'numFmtId="%d"' % numfmt_id, orig)
+        else:
+            new_xf = orig.replace("<xf ", '<xf numFmtId="%d" ' % numfmt_id, 1)
+        if 'applyNumberFormat' not in new_xf:
+            new_xf = new_xf.replace("<xf ", '<xf applyNumberFormat="1" ', 1)
+        new_body = body + new_xf
+        new_count = count + 1
+        s2 = s[:m.start()] + '<cellXfs count="%d">' % new_count + new_body + '</cellXfs>' + s[m.end():]
+        self._write("xl/styles.xml", s2)
+        return new_count - 1  # index of appended xf
+
+    def set_number_format(self, ref, fmt_code):
+        """Đổi định dạng hiển thị số của 1 ô (vd '[$-42A]#,##0' để luôn hiện dấu CHẤM
+        ngăn cách hàng nghìn, không phụ thuộc locale máy mở file)."""
+        numfmt_id = self._ensure_numfmt(fmt_code)
+        orig_style = self._cell_style_id(ref)
+        new_style = self._clone_xf_with_numfmt(orig_style, numfmt_id)
+        self._set_cell_style_id(ref, new_style)
+
+    def set_shrink_to_fit(self, ref):
+        """Bật shrinkToFit cho 1 ô để chữ tự co lại vừa 1 dòng, không bị xuống dòng/cắt."""
+        s = self._styles()
+        style_id = self._cell_style_id(ref)
+        m = re.search(r'<cellXfs count="(\d+)">(.*?)</cellXfs>', s, re.S)
+        body = m.group(2)
+        xfs = re.findall(r'<xf\b[^>]*?(?:/>|>.*?</xf>)', body, re.S)
+        orig = xfs[style_id]
+        if "<alignment" in orig:
+            if "shrinkToFit" not in orig:
+                new_xf = re.sub(r'<alignment ', '<alignment shrinkToFit="1" wrapText="0" ', orig, count=1)
+            else:
+                new_xf = orig
+        else:
+            if orig.endswith("/>"):
+                new_xf = orig[:-2] + '><alignment shrinkToFit="1" wrapText="0"/></xf>'
+            else:
+                new_xf = orig.replace("</xf>", '<alignment shrinkToFit="1" wrapText="0"/></xf>')
+        new_body = body + new_xf
+        new_count = int(m.group(1)) + 1
+        s2 = s[:m.start()] + '<cellXfs count="%d">' % new_count + new_body + '</cellXfs>' + s[m.end():]
+        self._write("xl/styles.xml", s2)
+        self._set_cell_style_id(ref, new_count - 1)
+
     # ---------- images / drawing ----------
     def _drawing_path(self):
         rel = "xl/worksheets/_rels/sheet1.xml.rels"
