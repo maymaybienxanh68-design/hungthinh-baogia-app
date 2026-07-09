@@ -10,6 +10,7 @@ Cách dùng:
 """
 
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -258,8 +259,11 @@ def export_quote(data_json_str):
     except Exception:
         pass
 
-    # Lưu Excel
-    out_name = f"BaoGia_{customer.replace(' ', '_')}_{datetime.now().strftime('%d%m%Y%H%M%S')}.xlsx"
+    # Lưu Excel - loại bỏ ký tự không hợp lệ trong tên file (/, \, :, ?, ", <, >, |)
+    # để tên khách hàng có ký tự đặc biệt không làm hỏng đường dẫn file
+    safe_customer = re.sub(r'[\\/:*?"<>|]+', '_', customer).strip() or "KhachHang"
+    safe_customer = re.sub(r'\s+', '_', safe_customer)
+    out_name = f"BaoGia_{safe_customer}_{datetime.now().strftime('%d%m%Y%H%M%S')}.xlsx"
     out_file = Path(__file__).parent / out_name
 
     wb.save(str(out_file))
