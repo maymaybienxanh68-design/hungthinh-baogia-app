@@ -143,7 +143,7 @@ input[type="number"] { width: 80px; }
           </tbody>
           <tfoot>
             <tr class="total-row">
-              <td colspan="5">TỔNG CỘNG</td>
+              <td colspan="7">TỔNG CỘNG</td>
               <td class="text-right" id="totalAmount">0</td>
               <td colspan="2"></td>
             </tr>
@@ -353,23 +353,40 @@ function updateQuoteTable() {
   tbody.innerHTML = quoteData.items.map((item, itemIdx) => `
     <tr>
       <td>${itemIdx + 1}</td>
-      <td>${item.name}</td>
-      <td><textarea rows="2" style="width:160px;font-size:12px;" placeholder="Nhập mô tả (nếu mẫu chưa có sẵn)" onchange="updateItem(${itemIdx}, 'description', this.value)">${item.description || ''}</textarea></td>
+      <td>${escapeHtml(item.name)}</td>
+      <td><textarea rows="2" style="width:160px;font-size:12px;" placeholder="Nhập mô tả (nếu mẫu chưa có sẵn)" onchange="updateItem(${itemIdx}, 'description', this.value)">${escapeHtml(item.description || '')}</textarea></td>
       <td style="text-align:center;">
         ${item.img ? `<img src="${item.img}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;display:block;margin:0 auto 4px;">` : ''}
         <input type="file" accept="image/*" style="width:90px;font-size:11px;" onchange="handleImageUpload(${itemIdx}, this)">
       </td>
-      <td>${item.unit}</td>
+      <td>${escapeHtml(item.unit)}</td>
       <td><input type="number" value="${item.qty}" onchange="updateItem(${itemIdx}, 'qty', this.value)"></td>
       <td><input type="number" value="${item.price}" onchange="updateItem(${itemIdx}, 'price', this.value)"></td>
       <td class="text-right">${formatPrice(item.qty * item.price)}</td>
-      <td><input type="text" value="${item.note}" onchange="updateItem(${itemIdx}, 'note', this.value)"></td>
+      <td><input type="text" value="${escapeHtml(item.note)}" onchange="updateItem(${itemIdx}, 'note', this.value)"></td>
       <td><button onclick="removeItem(${itemIdx})" style="background: #c0392b;">Xóa</button></td>
     </tr>
   `).join('');
 
   let total = quoteData.items.reduce((sum, item) => sum + (item.qty * item.price), 0);
   document.getElementById('totalAmount').textContent = formatPrice(total);
+
+  // Mẫu Excel chỉ có tối đa 8 dòng sản phẩm - cảnh báo nếu vượt quá,
+  // vì các sản phẩm thứ 9 trở đi sẽ KHÔNG được đưa vào file xuất
+  let warnDiv = document.getElementById('quoteLimitWarning');
+  if (!warnDiv) {
+    warnDiv = document.createElement('div');
+    warnDiv.id = 'quoteLimitWarning';
+    warnDiv.className = 'error';
+    warnDiv.style.marginTop = '10px';
+    document.getElementById('quoteTable').insertAdjacentElement('afterend', warnDiv);
+  }
+  if (quoteData.items.length > 8) {
+    warnDiv.textContent = '⚠️ Mẫu báo giá chỉ hỗ trợ tối đa 8 sản phẩm/trang. Có ' + quoteData.items.length + ' sản phẩm — chỉ 8 sản phẩm đầu sẽ được đưa vào file xuất, các sản phẩm còn lại sẽ bị bỏ qua.';
+    warnDiv.classList.remove('hidden');
+  } else {
+    warnDiv.classList.add('hidden');
+  }
 }
 
 function updateItem(idx, field, value) {
@@ -420,7 +437,13 @@ function saveQuote() {
   }
 
   savedQuotes.push(JSON.parse(JSON.stringify(quoteData)));
-  localStorage.setItem('savedQuotes', JSON.stringify(savedQuotes));
+  try {
+    localStorage.setItem('savedQuotes', JSON.stringify(savedQuotes));
+  } catch (e) {
+    savedQuotes.pop(); // hoàn tác vì lưu thất bại
+    alert('❌ Không thể lưu: bộ nhớ trình duyệt đã đầy (thường do ảnh sản phẩm quá nặng).\nHãy xuất báo giá ra Excel ngay rồi xóa bớt báo giá cũ trong "Danh sách".');
+    return;
+  }
   alert('✅ Báo giá đã lưu: ' + quoteData.no);
   clearQuote();
 }
@@ -436,7 +459,7 @@ function loadSavedQuotes() {
 
   list.innerHTML = savedQuotes.map((q, idx) => `
     <div class="card">
-      <strong>${q.no} - ${q.customer}</strong> (${q.date})<br>
+      <strong>${escapeHtml(q.no)} - ${escapeHtml(q.customer)}</strong> (${escapeHtml(q.date)})<br>
       <small>${q.items.length} sản phẩm | Tổng: ${formatPrice(q.items.reduce((s, it) => s + (it.qty * it.price), 0))}</small><br>
       <button onclick="loadQuote(${idx})">📂 Mở</button>
       <button onclick="deleteQuote(${idx})" style="background: #c0392b;">🗑️ Xóa</button>
@@ -467,6 +490,12 @@ function formatPrice(n) {
   return (n || 0).toLocaleString('vi-VN') + ' ₫';
 }
 
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function exportQuoteData() {
   if (quoteData.items.length === 0) {
     alert('❌ Vui lòng thêm sản phẩm vào báo giá');
@@ -482,7 +511,7 @@ function exportQuoteData() {
     items: quoteData.items.map(item => ({
       name: item.name,
       code: item.code,
-      description: '', // mô tả để trống, có thể thêm sau
+      description: item.description || '',
       unit: item.unit,
       qty: item.qty,
       price: item.price,
