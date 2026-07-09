@@ -129,6 +129,8 @@ input[type="number"] { width: 80px; }
             <tr>
               <th>STT</th>
               <th>Tên sản phẩm</th>
+              <th>Mô tả</th>
+              <th>Ảnh</th>
               <th>ĐVT</th>
               <th>SL</th>
               <th>Đơn giá</th>
@@ -168,16 +170,16 @@ input[type="number"] { width: 80px; }
 // Embedded sample data (1148 products từ app_data_min.json)
 const appData = {
   s: [
-    { n: "Kim may thường size 80", c: "KIM-001", u: "Gói/1000", p: 45000, v: 28000, t: 150, a: ["Kim may", "Kim #80"], img: "" },
-    { n: "Chỉ polyester 40s", c: "CHI-002", u: "Cuộn/3000m", p: 35000, v: 22000, t: 80, a: ["Chỉ may", "Polyester"], img: "" },
-    { n: "Dao cắt vải máy cắt", c: "DAO-003", u: "Cái", p: 850000, v: 520000, t: 15, a: ["Dao cắt", "Blade cutter"], img: "" },
-    { n: "Presser foot chân áp", c: "PAM-004", u: "Bộ", p: 120000, v: 75000, t: 45, a: ["Chân vịt", "Presser"], img: "" },
-    { n: "Động cơ servo điều khiển", c: "DM-005", u: "Bộ", p: 2500000, v: 1800000, t: 8, a: ["Motor servo", "Servo"], img: "" },
-    { n: "Suốt may (bobbin)", c: "SU-006", u: "Hộp/100", p: 25000, v: 15000, t: 200, a: ["Suốt", "Bobbin"], img: "" },
-    { n: "Thoi (shuttle)", c: "TH-007", u: "Cái", p: 180000, v: 110000, t: 30, a: ["Thoi", "Shuttle"], img: "" },
-    { n: "Đề cấp (cam)", c: "DE-008", u: "Bộ", p: 450000, v: 280000, t: 12, a: ["Đề cấp", "Cam set"], img: "" },
-    { n: "Lò xo may (spring)", c: "LX-009", u: "Bộ", p: 95000, v: 60000, t: 100, a: ["Lò xo", "Spring"], img: "" },
-    { n: "Bánh xe may (wheel)", c: "BX-010", u: "Cái", p: 145000, v: 90000, t: 60, a: ["Bánh xe", "Wheel"], img: "" }
+    { n: "Kim may thường size 80", c: "KIM-001", u: "Gói/1000", p: 45000, v: 28000, t: 150, a: ["Kim may", "Kim #80"], img: "", desc: "" },
+    { n: "Chỉ polyester 40s", c: "CHI-002", u: "Cuộn/3000m", p: 35000, v: 22000, t: 80, a: ["Chỉ may", "Polyester"], img: "", desc: "" },
+    { n: "Dao cắt vải máy cắt", c: "DAO-003", u: "Cái", p: 850000, v: 520000, t: 15, a: ["Dao cắt", "Blade cutter"], img: "", desc: "" },
+    { n: "Presser foot chân áp", c: "PAM-004", u: "Bộ", p: 120000, v: 75000, t: 45, a: ["Chân vịt", "Presser"], img: "", desc: "" },
+    { n: "Động cơ servo điều khiển", c: "DM-005", u: "Bộ", p: 2500000, v: 1800000, t: 8, a: ["Motor servo", "Servo"], img: "", desc: "" },
+    { n: "Suốt may (bobbin)", c: "SU-006", u: "Hộp/100", p: 25000, v: 15000, t: 200, a: ["Suốt", "Bobbin"], img: "", desc: "" },
+    { n: "Thoi (shuttle)", c: "TH-007", u: "Cái", p: 180000, v: 110000, t: 30, a: ["Thoi", "Shuttle"], img: "", desc: "" },
+    { n: "Đề cấp (cam)", c: "DE-008", u: "Bộ", p: 450000, v: 280000, t: 12, a: ["Đề cấp", "Cam set"], img: "", desc: "" },
+    { n: "Lò xo may (spring)", c: "LX-009", u: "Bộ", p: 95000, v: 60000, t: 100, a: ["Lò xo", "Spring"], img: "", desc: "" },
+    { n: "Bánh xe may (wheel)", c: "BX-010", u: "Cái", p: 145000, v: 90000, t: 60, a: ["Bánh xe", "Wheel"], img: "", desc: "" }
   ]
 };
 
@@ -331,6 +333,9 @@ function selectProduct(idx) {
     qty: 1,
     price: product.p,
     note: '',
+    // Nếu kho dữ liệu đã có sẵn mô tả/ảnh cho sản phẩm này thì tự điền vào,
+    // chưa có thì để trống để nhập tay ở bảng báo giá bên dưới
+    description: product.desc || '',
     img: product.img || ''
   });
 
@@ -349,6 +354,11 @@ function updateQuoteTable() {
     <tr>
       <td>${itemIdx + 1}</td>
       <td>${item.name}</td>
+      <td><textarea rows="2" style="width:160px;font-size:12px;" placeholder="Nhập mô tả (nếu mẫu chưa có sẵn)" onchange="updateItem(${itemIdx}, 'description', this.value)">${item.description || ''}</textarea></td>
+      <td style="text-align:center;">
+        ${item.img ? `<img src="${item.img}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;display:block;margin:0 auto 4px;">` : ''}
+        <input type="file" accept="image/*" style="width:90px;font-size:11px;" onchange="handleImageUpload(${itemIdx}, this)">
+      </td>
       <td>${item.unit}</td>
       <td><input type="number" value="${item.qty}" onchange="updateItem(${itemIdx}, 'qty', this.value)"></td>
       <td><input type="number" value="${item.price}" onchange="updateItem(${itemIdx}, 'price', this.value)"></td>
@@ -366,7 +376,20 @@ function updateItem(idx, field, value) {
   if (field === 'qty') quoteData.items[idx].qty = parseInt(value) || 1;
   if (field === 'price') quoteData.items[idx].price = parseInt(value) || 0;
   if (field === 'note') quoteData.items[idx].note = value;
+  if (field === 'description') quoteData.items[idx].description = value;
   updateQuoteTable();
+}
+
+function handleImageUpload(idx, inputEl) {
+  const file = inputEl.files && inputEl.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    // Lưu ảnh dạng data URL (base64) - không cần server, xuất Excel sẽ tự giải mã và chèn vào ô
+    quoteData.items[idx].img = e.target.result;
+    updateQuoteTable();
+  };
+  reader.readAsDataURL(file);
 }
 
 function removeItem(idx) {
