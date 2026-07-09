@@ -508,7 +508,7 @@ function exportToExcelFile() {
   };
 
   // Gửi tới server để xuất file
-  fetch('http://localhost:5000/api/export-quote', {
+  fetch('/api/export-quote', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -524,7 +524,7 @@ function exportToExcelFile() {
       alert('✅ Xuất thành công!\n\n' + data.message);
       // Download file
       if (data.file) {
-        window.open('http://localhost:5000/api/download/' + encodeURIComponent(data.file), '_blank');
+        window.open('/api/download/' + encodeURIComponent(data.file), '_blank');
       }
     } else {
       alert('❌ Lỗi: ' + (data.error || 'Không biết lỗi gì'));
