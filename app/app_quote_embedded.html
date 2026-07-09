@@ -64,6 +64,7 @@ input[type="number"] { width: 80px; }
         <button class="tab-btn active" onclick="switchTab(0)">🔍 Tra cứu</button>
         <button class="tab-btn" onclick="switchTab(1)">📝 Báo giá</button>
         <button class="tab-btn" onclick="switchTab(2)">📋 Danh sách</button>
+        <button class="tab-btn" onclick="switchTab(3)">🔧 Công cụ</button>
         <button class="tab-btn secondary" style="float:right;" onclick="doLogout()">Đăng xuất</button>
       </div>
     </div>
@@ -161,6 +162,62 @@ input[type="number"] { width: 80px; }
       <div class="card">
         <h2>📋 Danh sách báo giá đã lưu</h2>
         <div id="savedQuotesList"></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: TOOLS -->
+    <div id="tab3" class="tab-content">
+      <div class="card">
+        <h2>🔧 Tra cứu tương thích theo máy</h2>
+        <div class="form-group">
+          <label>Chọn loại máy:</label>
+          <select id="machineSelect" onchange="renderMachineCompat()"></select>
+        </div>
+        <div id="machineCompatResult"></div>
+      </div>
+
+      <div class="card">
+        <h2>💱 Tính Landed Cost hàng nhập Trung Quốc</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+          <div class="form-group">
+            <label>Giá mua (NDT/¥):</label>
+            <input type="number" id="lcPriceCny" value="0" oninput="calcLandedCost()">
+          </div>
+          <div class="form-group">
+            <label>Tỷ giá (VNĐ / 1 ¥):</label>
+            <input type="number" id="lcRate" value="3650" oninput="calcLandedCost()">
+          </div>
+          <div class="form-group">
+            <label>Số lượng:</label>
+            <input type="number" id="lcQty" value="1" oninput="calcLandedCost()">
+          </div>
+          <div class="form-group">
+            <label>Phí vận chuyển TQ→VN (VNĐ, cả lô):</label>
+            <input type="number" id="lcShip" value="0" oninput="calcLandedCost()">
+          </div>
+          <div class="form-group">
+            <label>Thuế nhập khẩu (%):</label>
+            <input type="number" id="lcTax" value="0" oninput="calcLandedCost()">
+          </div>
+          <div class="form-group">
+            <label>VAT nhập khẩu (%):</label>
+            <input type="number" id="lcVat" value="8" oninput="calcLandedCost()">
+          </div>
+          <div class="form-group">
+            <label>Chi phí khác (VNĐ, cả lô — bốc xếp, thông quan...):</label>
+            <input type="number" id="lcOther" value="0" oninput="calcLandedCost()">
+          </div>
+        </div>
+        <div id="lcResult" style="margin-top:15px;padding:15px;background:#f9f9f9;border-radius:6px;"></div>
+      </div>
+
+      <div class="card">
+        <h2>⚠️ Cảnh báo tồn kho thấp</h2>
+        <div class="form-group" style="max-width:200px;">
+          <label>Ngưỡng tồn (≤):</label>
+          <input type="number" id="lowStockThreshold" value="3" oninput="renderLowStock()">
+        </div>
+        <div id="lowStockResult"></div>
       </div>
     </div>
   </div>
@@ -1320,8 +1377,64 @@ const appData = {
     { n: "Kim DVx57 #16/100 (J) (Korea)", c: "KIM-DVx57-16", u: "Chiếc", p: 0, v: 3700, t: 0, a: ["DVx57#16KRA", "Kim DVx57 #16/100 (J) (Korea)"], img: "", desc: "DVx57-16" },
     { n: "Kim UY x 128 GAS #18/110 (Korean)", c: "KIM-UYx128-18", u: "Chiếc", p: 0, v: 2980, t: 0, a: ["KIMUYx128#18/110", "Kim UY x 128 GAS #18/110 (Korean)"], img: "", desc: "UYx128-18" },
     { n: "Kim TQx1#14/90(J) ( KOREA)", c: "KIM-TQx1-14", u: "Chiếc", p: 0, v: 2200, t: 0, a: ["KIMTQx1#14/90", "Kim TQx1#14/90(J) ( KOREA)"], img: "", desc: "TQx1-14" }
+  ],
+  // Giá theo từng NCC (từ DATA_NCC_GIA.csv) — 1 sản phẩm có thể có nhiều NCC báo giá khác nhau
+  ncc: [
+    { c: "KIM-DPX17-14-90-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DPx17 # 14/90 (J) (Korea)", sku: "DPx17#14KRA", gia: 2230, hoadon: true, ngay: "2026-04-04" },
+    { c: "KIM-DVx57-16", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DVx57 #16/100 (J) (Korea)", sku: "DVx57#16KRA", gia: 3700, hoadon: true, ngay: "2026-01-28" },
+    { c: "KIM-DPX17-21-130-J-KOREA", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DPx17 # 21 /130 (J) (KOREA)", sku: "DPx17#21KRA", gia: 2050, hoadon: true, ngay: "2026-01-30" },
+    { c: "KIM-DBX1-11-75-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DBx1#11/75 (J )Korea", sku: "KIM DBx1#11/75 (J )KRA", gia: 1530, hoadon: true, ngay: "2026-04-04" },
+    { c: "KIM-DBX1-9-65-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DBx1 #9/65 (J) (Korea)", sku: "DBx1#9KRA", gia: 1500, hoadon: true, ngay: "2026-05-05" },
+    { c: "KIM-DBX1-KN-12-80-NHAT", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DBx1 # 12/80 (J) (Korea)", sku: "DBx1#12KRA", gia: 1500, hoadon: true, ngay: "2026-03-06" },
+    { c: "KIM-DBX1-14-90-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DBx1#14/90 (J ) (Korea)", sku: "KIM DBx1#14/90 (J )KRA", gia: 1500, hoadon: true, ngay: "2026-03-06" },
+    { c: "KIM-DCX1-11-75-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DCx1 # 11/75 (B) (Korea)", sku: "DCx1#11BKRA", gia: 2480, hoadon: true, ngay: "2026-03-06" },
+    { c: "KIM-DCX1-9-65-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DCx1 # 9/65 (J) (Korea)", sku: "KIMDCx1#9/65", gia: 2500, hoadon: true, ngay: "2026-05-05" },
+    { c: "KIM-DCX1-12-80-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DCx1 #12/80 (Korea)", sku: "KIMDCx1#12/80", gia: 2480, hoadon: true, ngay: "2026-03-06" },
+    { c: "KIM-DCX1-14-90-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DCx1 #14/90 (J) (Korea)", sku: "KIMDCx1#14/90", gia: 2500, hoadon: true, ngay: "2026-04-04" },
+    { c: "KIM-DPX5-14-90-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DPx5 #14/90 (J) (Korea)", sku: "DPX5#14KRA", gia: 1500, hoadon: true, ngay: "2026-03-06" },
+    { c: "KIM-DPX5-9-65-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DPx5 9/65 (Korea)", sku: "KIMDPx5#9/65", gia: 1500, hoadon: true, ngay: "2026-03-06" },
+    { c: "KIM-DPX5-11-75-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DPx5 #11/75 (Korea)", sku: "KIMDPx5#11/75", gia: 1530, hoadon: true, ngay: "2026-04-04" },
+    { c: "KIM-DPX5-12-80-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DPx5 # 12/80 (J) (Korea)", sku: "KIMDPx5#12/80", gia: 1500, hoadon: true, ngay: "2026-03-06" },
+    { c: "KIM-UYX128-GAS-9-65-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim UY x 128 GAS 9/65 (Korean)", sku: "KIMUYx128#9/65", gia: 3000, hoadon: true, ngay: "2026-04-04" },
+    { c: "KIM-UYX128-GAS-11-75-J-HAN-QUO", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim UY x 128 #11/75 (J) (Korean)", sku: "KIMUYx128#11/75", gia: 3000, hoadon: true, ngay: "2026-04-04" },
+    { c: "KIM-UYX128-GAS-12-80-J-HAN-QUO", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim UY x 128 GAS #12/80 (J) (Korean)", sku: "KIMUYx128#12/80", gia: 2980, hoadon: true, ngay: "2026-03-06" },
+    { c: "KIM-UYx128-18", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim UY x 128 GAS #18/110 (Korean)", sku: "KIMUYx128#18/110", gia: 2980, hoadon: true, ngay: "2026-03-06" },
+    { c: "KIM-DPX17-11-75-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DPx17# 11/75 (J) (Korea)", sku: "KIMDPx17#11/75 KRA", gia: 2230, hoadon: true, ngay: "2026-04-04" },
+    { c: "KIM-DPX17-9-65-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DPx17 #9/65 (Korean)", sku: "KIMDPx17#9/65", gia: 2200, hoadon: true, ngay: "2026-03-06" },
+    { c: "KIM-DPX17-12-80-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim BPx17 #12/80 (Korean)", sku: "KIMDPx17#12/80", gia: 2200, hoadon: true, ngay: "2026-03-06" },
+    { c: "KIM-UOX113-GS-11-75-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim UOx113 GS # 11/75 (B) (Korea)", sku: "UOx113 GS #11/75 (B) (Korea)", gia: 3950, hoadon: true, ngay: "2026-03-06" },
+    { c: "KIM-UOX113-GS-12-80-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim UOx113 # 12/75 (Korean)", sku: "KIMUOx113#12/75", gia: 3950, hoadon: true, ngay: "2026-03-06" },
+    { c: "KIM-DBX1-KN-12-80-NHAT", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DBx1 KN #12/80 (Nhật)", sku: "KIMDBx1KN#12/80", gia: 2580, hoadon: true, ngay: "2026-03-06" },
+    { c: "KIM-DBX1-14-90-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DBx1# 14/90 (J) (Korea)", sku: "KIMDBx1 14/90 (J)", gia: 1530, hoadon: true, ngay: "2026-04-04" },
+    { c: "KIM-DBX1-16-100-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DBx1#16/100 (J) (Korea)", sku: "DBx1#16J", gia: 1530, hoadon: true, ngay: "2026-04-04" },
+    { c: "KIM-DBX1-18-110-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DBx1#18/110 (J ) Korea", sku: "KIM DBx1#18/110 (J )KRA", gia: 1530, hoadon: true, ngay: "2026-04-04" },
+    { c: "KIM-DPX5-14-90-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DPx5 #14/90 (J ) Korea", sku: "KIM DPx5#14/90 (J )KRA", gia: 1530, hoadon: true, ngay: "2026-04-08" },
+    { c: "KIM-DPX5-16-100-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DPx5#16/100 (J ) Korea", sku: "KIM DPx5#16/100 (J )KRA", gia: 1530, hoadon: true, ngay: "2026-04-27" },
+    { c: "KIM-DPX5-18-110-PD-NHAT", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DPx5# 18/110 (J) (Korea)", sku: "KIMDPx5#18/110KRA", gia: 1530, hoadon: true, ngay: "2026-04-04" },
+    { c: "KIM-DPX17-16-100-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DPx17#16/100 (J) (Korea)", sku: "DBx17#16JKRA", gia: 2230, hoadon: true, ngay: "2026-04-04" },
+    { c: "KIM-DPX17-18-110-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DPx17#18/110 (J) (Korea)", sku: "KIMDPx17#18/110 (J) Korea", gia: 2230, hoadon: true, ngay: "2026-04-04" },
+    { c: "KIM-DCX1-11-75-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DCx1 #11/75 (J) (Korea)", sku: "KH DCx1#11J", gia: 2500, hoadon: true, ngay: "2026-04-04" },
+    { c: "KIM-UYX128-GAS-14-90-J-HAN-QUO", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim UYx128 GAS #14/90 (J) (Korea)", sku: "UYx128GAS#14KRA", gia: 3000, hoadon: true, ngay: "2026-04-04" },
+    { c: "KIM-DPX5-18-110-PD-NHAT", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DPx5 #18/110 PD (Nhật)", sku: "DPx5#18PDJP", gia: 2700, hoadon: true, ngay: "2026-04-07" },
+    { c: "KIM-TQx1-14", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim TQx1#14/90(J) ( KOREA)", sku: "KIMTQx1#14/90", gia: 2200, hoadon: true, ngay: "2026-04-27" },
+    { c: "KIM-DCX1-10-70-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DCx1#10/70", sku: "KIMDCx1#10/70", gia: 2500, hoadon: true, ngay: "2026-05-05" },
+    { c: "KIM-DBX1-KN-12-80-NHAT", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "KIMDBx1#12/80 (J) (korea)", sku: "KIMDBx1#12/80 (J) (korea)", gia: 1530, hoadon: true, ngay: "2026-05-08" },
+    { c: "KIM-TVX7-9-65-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim TVx7#9/65 (J) (KOREA)", sku: "KIMTVx7#9/65 (J) (KOREA)", gia: 3300, hoadon: true, ngay: "2026-05-08" },
+    { c: "KIM-TVX7-11-75-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim TVx7#11/75 (J) (KOREA)", sku: "KIMTVx7#11/75 (J) (KOREA)", gia: 3300, hoadon: true, ngay: "2026-05-08" }
   ]
 };
+
+// Bảng tra cứu tương thích: loại máy → hệ kim tương ứng (kiến thức ngành may công nghiệp phổ thông)
+// Đây là gợi ý ban đầu dựa trên hệ kim phổ biến; Chủ có thể yêu cầu chỉnh sửa/bổ sung khi cần.
+const machineCompat = [
+  { machine: "Máy 1 kim tốc độ cao (Juki DDL, Brother S-7200, Jack JK-8720, Typical...)", systems: ["DBx1"] },
+  { machine: "Máy 1 kim mũi to, vải dày/jean (Juki DU, Jack JK-A4...)", systems: ["DPx5"] },
+  { machine: "Máy 2 kim (Juki LH, Brother LT2-B...)", systems: ["DPx17"] },
+  { machine: "Máy vắt sổ (overlock) 3-5 chỉ cỡ trung (Juki MO, Pegasus, Siruba 747...)", systems: ["DCx1"] },
+  { machine: "Máy vắt sổ/viền cuốn (safety stitch, coverstitch) hạng nặng", systems: ["UYx128", "UOx113"] },
+  { machine: "Máy đính bọ, thùa khuyết đầu tròn (bar tack, eyelet)", systems: ["DVx57"] },
+  { machine: "Máy thùa khuy đầu bằng, đính cúc chuyên dụng", systems: ["TQx1", "TVx7"] }
+];
 
 let userData = { mode: null, loggedIn: false, selectedProductIdx: -1 };
 let quoteData = { no: "", date: "", customer: "", address: "", phone: "", items: [] };
@@ -1330,6 +1443,8 @@ let savedQuotes = [];
 window.onload = function() {
   loadSavedQuotes();
   document.getElementById('quoteDate').valueAsDate = new Date();
+  let sel = document.getElementById('machineSelect');
+  sel.innerHTML = machineCompat.map((m, i) => '<option value="' + i + '">' + m.machine + '</option>').join('');
 };
 
 function doLogin() {
@@ -1372,6 +1487,69 @@ function switchTab(tabIdx) {
   event.target.classList.add('active');
 
   if (tabIdx === 2) loadSavedQuotes();
+  if (tabIdx === 3) { renderMachineCompat(); calcLandedCost(); renderLowStock(); }
+}
+
+function renderMachineCompat() {
+  let sel = document.getElementById('machineSelect');
+  let idx = parseInt(sel.value || 0);
+  let m = machineCompat[idx];
+  if (!m) return;
+  let matches = appData.s.filter(p => m.systems.some(sys => p.c.toUpperCase().includes('-' + sys.toUpperCase())));
+  let div = document.getElementById('machineCompatResult');
+  if (matches.length === 0) {
+    div.innerHTML = '<p style="color:#999;">Chưa có linh kiện nào khớp hệ kim ' + m.systems.join(', ') + ' trong kho.</p>';
+    return;
+  }
+  div.innerHTML = '<p style="margin-bottom:10px;">Hệ kim phù hợp: <strong>' + m.systems.join(', ') + '</strong> — tìm thấy ' + matches.length + ' sản phẩm:</p>' +
+    matches.map(p => `
+      <div class="result">
+        <strong>${escapeHtml(p.n)}</strong><br>
+        Mã: <code>${p.c}</code> | Tồn: ${p.t} | Giá: ${formatPrice(p.p)}
+      </div>
+    `).join('') +
+    '<p style="color:#999;font-size:12px;margin-top:8px;">⚠️ Bảng tương thích dựa trên kiến thức ngành phổ thông, Chủ vui lòng kiểm tra lại với máy thực tế trước khi tư vấn khách.</p>';
+}
+
+function calcLandedCost() {
+  let price = parseFloat(document.getElementById('lcPriceCny').value) || 0;
+  let rate = parseFloat(document.getElementById('lcRate').value) || 0;
+  let qty = parseFloat(document.getElementById('lcQty').value) || 0;
+  let ship = parseFloat(document.getElementById('lcShip').value) || 0;
+  let taxPct = parseFloat(document.getElementById('lcTax').value) || 0;
+  let vatPct = parseFloat(document.getElementById('lcVat').value) || 0;
+  let other = parseFloat(document.getElementById('lcOther').value) || 0;
+
+  let goodsVnd = price * rate * qty;
+  let taxAmount = goodsVnd * taxPct / 100;
+  let vatAmount = (goodsVnd + taxAmount) * vatPct / 100;
+  let totalVnd = goodsVnd + ship + taxAmount + vatAmount + other;
+  let unitCost = qty > 0 ? totalVnd / qty : 0;
+
+  document.getElementById('lcResult').innerHTML = `
+    <p>Tiền hàng (VNĐ): <strong>${formatPrice(goodsVnd)}</strong></p>
+    <p>Thuế nhập khẩu (${taxPct}%): <strong>${formatPrice(taxAmount)}</strong></p>
+    <p>VAT nhập khẩu (${vatPct}%): <strong>${formatPrice(vatAmount)}</strong></p>
+    <p>Vận chuyển: <strong>${formatPrice(ship)}</strong></p>
+    <p>Chi phí khác: <strong>${formatPrice(other)}</strong></p>
+    <hr style="margin:8px 0;">
+    <p style="font-size:16px;">TỔNG LANDED COST: <strong style="color:#c0392b;">${formatPrice(totalVnd)}</strong></p>
+    <p style="font-size:16px;">GIÁ VỐN / ĐƠN VỊ: <strong style="color:#2e7d32;">${formatPrice(unitCost)}</strong></p>
+  `;
+}
+
+function renderLowStock() {
+  let threshold = parseInt(document.getElementById('lowStockThreshold').value) || 0;
+  let low = appData.s.filter(p => p.t <= threshold).sort((a, b) => a.t - b.t);
+  let div = document.getElementById('lowStockResult');
+  if (low.length === 0) {
+    div.innerHTML = '<p style="color:#2e7d32;">✅ Không có sản phẩm nào tồn kho ≤ ' + threshold + '.</p>';
+    return;
+  }
+  div.innerHTML = '<p style="margin-bottom:10px;color:#c0392b;">Có ' + low.length + ' sản phẩm tồn kho thấp:</p>' +
+    '<table><thead><tr><th>Tên sản phẩm</th><th>Mã</th><th>Tồn</th></tr></thead><tbody>' +
+    low.slice(0, 200).map(p => `<tr><td>${escapeHtml(p.n)}</td><td>${p.c}</td><td style="color:#c0392b;font-weight:bold;">${p.t}</td></tr>`).join('') +
+    '</tbody></table>' + (low.length > 200 ? '<p style="color:#999;">... còn ' + (low.length - 200) + ' sản phẩm nữa.</p>' : '');
 }
 
 function doSearch() {
@@ -1415,8 +1593,19 @@ function viewItem(idx) {
     ${userData.mode === 'owner' ? '<p><strong>Giá vốn:</strong> ' + formatPrice(product.v) + '</p>' : ''}
     <p><strong>Tồn kho:</strong> ${product.t}</p>
     ${product.a && product.a.length > 0 ? '<p><strong>Alias:</strong> ' + product.a.join(', ') + '</p>' : ''}
+    ${userData.mode === 'owner' ? renderNccCompare(product.c) : ''}
   `;
   document.getElementById('selectedItem').classList.remove('hidden');
+}
+
+function renderNccCompare(code) {
+  let rows = appData.ncc.filter(r => r.c === code);
+  if (rows.length === 0) return '';
+  rows = rows.slice().sort((a, b) => a.gia - b.gia);
+  let best = rows[0].gia;
+  return '<h4 style="margin-top:12px;">🏭 So sánh giá NCC</h4><table><thead><tr><th>NCC</th><th>Tên NCC gọi</th><th>Giá</th><th>Hóa đơn</th><th>Ngày báo</th></tr></thead><tbody>' +
+    rows.map(r => `<tr${r.gia === best ? ' style="background:#eaffea;"' : ''}><td>${escapeHtml(r.ncc)}</td><td>${escapeHtml(r.ten_goi)}</td><td>${formatPrice(r.gia)}${r.gia === best ? ' ✅' : ''}</td><td>${r.hoadon ? 'Có' : 'Không'}</td><td>${r.ngay || ''}</td></tr>`).join('') +
+    '</tbody></table>';
 }
 
 function closeItem() {
