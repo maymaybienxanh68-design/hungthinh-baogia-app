@@ -6,8 +6,7 @@ Chạy local:  python3 server.py  -> http://localhost:5000
 Chạy online (Render...): dùng biến môi trường PORT, có lớp mật khẩu bảo vệ toàn site.
 """
 
-from flask import Flask, request, jsonify, send_file, Response
-from functools import wraps
+from flask import Flask, request, jsonify, send_file
 from pathlib import Path
 import json
 import subprocess
@@ -18,33 +17,8 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = Path(__file__).parent / 'output'
 app.config['UPLOAD_FOLDER'].mkdir(exist_ok=True)
 
-# Mật khẩu truy cập toàn site (đổi qua biến môi trường SITE_PASSWORD trên Render)
-SITE_PASSWORD = os.environ.get('SITE_PASSWORD', 'hungthinh2026')
-
-
-def check_auth(password):
-    return password == SITE_PASSWORD
-
-
-def authenticate():
-    return Response(
-        'Vui long nhap mat khau de truy cap.', 401,
-        {'WWW-Authenticate': 'Basic realm="Hung Thinh Smart"'}
-    )
-
-
-def requires_auth(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.password):
-            return authenticate()
-        return f(*args, **kwargs)
-    return decorated
-
 
 @app.route('/api/export-quote', methods=['POST'])
-@requires_auth
 def export_quote():
     """Endpoint để xuất báo giá"""
     try:
@@ -85,7 +59,6 @@ def export_quote():
 
 
 @app.route('/api/download/<filename>', methods=['GET'])
-@requires_auth
 def download_file(filename):
     try:
         file_path = Path(__file__).parent / 'scripts' / filename
@@ -99,7 +72,6 @@ def download_file(filename):
 
 
 @app.route('/', methods=['GET'])
-@requires_auth
 def index():
     app_file = Path(__file__).parent / 'app' / 'app_quote_embedded.html'
     if app_file.exists():
