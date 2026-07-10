@@ -65,6 +65,7 @@ input[type="number"] { width: 80px; }
         <button class="tab-btn" onclick="switchTab(1)">📝 Báo giá</button>
         <button class="tab-btn" onclick="switchTab(2)">📋 Danh sách</button>
         <button class="tab-btn" onclick="switchTab(3)">🔧 Công cụ</button>
+        <button class="tab-btn" onclick="switchTab(4)">📦 Đơn hàng</button>
         <button class="tab-btn secondary" style="float:right;" onclick="doLogout()">Đăng xuất</button>
       </div>
     </div>
@@ -168,6 +169,30 @@ input[type="number"] { width: 80px; }
     <!-- TAB 3: TOOLS -->
     <div id="tab3" class="tab-content">
       <div class="card">
+        <h2>🔀 Rà soát &amp; gộp sản phẩm nghi trùng <span style="font-size:12px;color:#999;font-weight:normal;">(chỉ Chủ)</span></h2>
+        <p style="color:#666;font-size:13px;margin-bottom:10px;">Tự quét toàn kho tìm các sản phẩm <strong>trùng/gần trùng tên nhưng khác mã</strong> (1 sản phẩm bị tạo thành nhiều mã). Chọn <strong>mã giữ lại</strong> cho từng nhóm rồi bấm <em>Xuất quyết định gộp</em> để tải file gửi lại — chưa gộp tự động, Chủ duyệt trước.</p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+          <button onclick="renderMergeReview()">🔍 Quét lại</button>
+          <button onclick="exportMergeDecisions()" style="background:#2e7d32;">📤 Xuất quyết định gộp (CSV)</button>
+          <label style="font-size:13px;display:flex;align-items:center;gap:5px;"><input type="checkbox" id="mergeFuzzy" onchange="renderMergeReview()"> Bao gồm nghi trùng gần đúng</label>
+        </div>
+        <div id="mergeReviewResult"></div>
+      </div>
+
+      <div class="card">
+        <h2>🏷️ So sánh giá nhà cung cấp <span style="font-size:12px;color:#999;font-weight:normal;">(chỉ Chủ)</span></h2>
+        <p style="color:#666;font-size:13px;margin-bottom:10px;">So sánh giá CÙNG một mặt hàng giữa các NCC (Đài Nhật, Đông Dương, Thanh Hoa, Đại Đồng, Phồn Thịnh...). Mặt hàng có ≥2 NCC sẽ hiện NCC rẻ nhất &amp; mức tiết kiệm.</p>
+        <div class="form-group" style="margin-bottom:8px;">
+          <label>🔎 Tìm mặt hàng để so giá giữa các NCC:</label>
+          <input type="text" id="supSearchInput" placeholder="vd: kim dbx1, dao 8e, chân vịt, thoi..." oninput="renderSupSearch()">
+        </div>
+        <div id="supSearchResult"></div>
+        <hr style="margin:12px 0;border:none;border-top:1px solid #eee;">
+        <div style="margin-bottom:10px;"><button onclick="exportSupplierCompare()" style="background:#2e7d32;">📤 Xuất ma trận so sánh (CSV)</button></div>
+        <div id="supCompareResult"></div>
+      </div>
+
+      <div class="card">
         <h2>🔧 Tra cứu tương thích theo máy</h2>
         <div class="form-group">
           <label>Chọn loại máy:</label>
@@ -218,6 +243,30 @@ input[type="number"] { width: 80px; }
           <input type="number" id="lowStockThreshold" value="3" oninput="renderLowStock()">
         </div>
         <div id="lowStockResult"></div>
+      </div>
+    </div>
+    <div id="tab4" class="tab-content">
+      <div class="card">
+        <h2>📦 Quản lý đơn hàng</h2>
+        <div id="orderStats" style="margin-bottom:12px;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+          <button onclick="newOrder()">➕ Tạo đơn mới</button>
+          <select id="orderFromQuote" style="padding:6px;"><option value="">— Tạo đơn từ báo giá đã lưu —</option></select>
+          <button onclick="exportOrders()" style="background:#2e7d32;">📤 Xuất đơn (CSV)</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+          <input type="text" id="orderSearch" placeholder="Tìm mã đơn / khách..." oninput="renderOrders()" style="flex:1;min-width:160px;">
+          <select id="orderStatusFilter" onchange="renderOrders()" style="padding:6px;">
+            <option value="">Tất cả trạng thái</option>
+            <option value="moi">🆕 Mới</option>
+            <option value="dat_ncc">📦 Đã đặt NCC</option>
+            <option value="dang_giao">🚚 Đang giao</option>
+            <option value="hoan_thanh">✅ Hoàn thành</option>
+            <option value="huy">❌ Đã hủy</option>
+          </select>
+        </div>
+        <div id="orderFormWrap"></div>
+        <div id="ordersList"></div>
       </div>
     </div>
   </div>
@@ -1376,7 +1425,51 @@ const appData = {
     { n: "Rơ le SSR", c: "NOIHOI-RO-LE-SSR", u: "Cái", p: 320000, v: 140000, t: 1, a: ["SP000001"], img: "", desc: "" },
     { n: "Kim DVx57 #16/100 (J) (Korea)", c: "KIM-DVx57-16", u: "Chiếc", p: 0, v: 3700, t: 0, a: ["DVx57#16KRA", "Kim DVx57 #16/100 (J) (Korea)"], img: "", desc: "DVx57-16" },
     { n: "Kim UY x 128 GAS #18/110 (Korean)", c: "KIM-UYx128-18", u: "Chiếc", p: 0, v: 2980, t: 0, a: ["KIMUYx128#18/110", "Kim UY x 128 GAS #18/110 (Korean)"], img: "", desc: "UYx128-18" },
-    { n: "Kim TQx1#14/90(J) ( KOREA)", c: "KIM-TQx1-14", u: "Chiếc", p: 0, v: 2200, t: 0, a: ["KIMTQx1#14/90", "Kim TQx1#14/90(J) ( KOREA)"], img: "", desc: "TQx1-14" }
+    { n: "Kim TQx1#14/90(J) ( KOREA)", c: "KIM-TQx1-14", u: "Chiếc", p: 0, v: 2200, t: 0, a: ["KIMTQx1#14/90", "Kim TQx1#14/90(J) ( KOREA)"], img: "", desc: "TQx1-14" },
+    { n: "Băng tải may dây gân 450mmx1540mm", c: "BANG-TAI-MAY-DAY-GAN-450MMX1540MM", u: "Chiếc", p: 0, v: 2350000, t: 0, a: ["Băng tải may dây gân 450mmx1540mm"], img: "", desc: "" },
+    { n: "Mặt nguyệt máy trần 5.6mm 2", c: "MAT-NGUYET-MAY-TRAN-5-6MM-2", u: "Chiếc", p: 0, v: 65000, t: 0, a: ["Mặt nguyệt máy trần 5.6mm 2"], img: "", desc: "" },
+    { n: "Nhíp chân vịt trân 4 kim", c: "NHIP-CHAN-VIT-TRAN-4-KIM", u: "Bộ", p: 0, v: 56000, t: 0, a: ["Nhíp chân vịt trân 4 kim"], img: "", desc: "" },
+    { n: "Chân vịt 3 kim 5.6mm", c: "CHAN-VIT-3-KIM-5-6MM", u: "Chiếc", p: 0, v: 85000, t: 0, a: ["Chân vịt 3 kim 5.6mm"], img: "", desc: "" },
+    { n: "Dao tĩnh dưới máy trải vải M-15 ( trái ) mã 84619002", c: "DAO-TINH-DUOI-MAY-TRAI-VAI-M-15-TRAI-MA", u: "Chiếc", p: 0, v: 325000, t: 0, a: ["Dao tĩnh dưới máy trải vải M-15 ( trái ) mã 84619002"], img: "", desc: "" },
+    { n: "Răng cưa máy chần đè 3 kim 5 chỉ Juki MF7923 (5.6mm) 400-32900/400-40376 JY", c: "RANG-CUA-MAY-CHAN-DE-3-KIM-5-CHI-JUKI-MF", u: "Bộ", p: 0, v: 185000, t: 0, a: ["Răng cưa máy chần đè 3 kim 5 chỉ Juki MF7923 (5.6mm) 400-32900/400-40376 JY"], img: "", desc: "" },
+    { n: "Răng cưa 1 kim sắt E FD1839-18T ( có cắt chỉ )", c: "RANG-CUA-1-KIM-SAT-E-FD1839-18T-CO-CAT-C", u: "Chiếc", p: 0, v: 8500, t: 0, a: ["Răng cưa 1 kim sắt E FD1839-18T ( có cắt chỉ )"], img: "", desc: "" },
+    { n: "Mặt nguyệt vắt sổ 277505R60", c: "MAT-NGUYET-VAT-SO-277505R60", u: "Chiếc", p: 0, v: 56000, t: 0, a: ["Mặt nguyệt vắt sổ 277505R60"], img: "", desc: "" },
+    { n: "Máy cắt nhiệt mini dùng trong công nghiệp ngành may, chiều dài lưỡi dao21cm, công suất: 150W, điện áp 220v", c: "MAY-CAT-NHIET-MINI-DUNG-TRONG-CONG-NGHIE", u: "Chiếc", p: 0, v: 862000, t: 0, a: ["Máy cắt nhiệt mini dùng trong công nghiệp ngành may, chiều dài lưỡi dao21cm, công suất: 150W, điện áp 220v"], img: "", desc: "" },
+    { n: "Bộ cự ly VC008-12N-3/16", c: "BO-CU-LY-VC008-12N-3-16", u: "Bộ", p: 0, v: 865000, t: 0, a: ["Bộ cự ly VC008-12N-3/16"], img: "", desc: "" },
+    { n: "BCL quấn ống 3 Kim Brother/ JACK 928 1/4 cv thấp may hàng mỏng", c: "BCL-QUAN-ONG-3-KIM-BROTHER-JACK-928-1-4", u: "Bộ", p: 0, v: 750000, t: 0, a: ["BCL quấn ống 3 Kim Brother/ JACK 928 1/4 cv thấp may hàng mỏng", "BCL-9280-1/4B"], img: "", desc: "" },
+    { n: "Sợi đốt 18KW mặt bích 14.5 cm/ tâm lỗ 12.5 cm Trung quốc ( phi 10 )", c: "SOI-DOT-18KW-MAT-BICH-14-5-CM-TAM-LO-12", u: "Chiếc", p: 0, v: 550000, t: 0, a: ["Sợi đốt 18KW mặt bích 14.5 cm/ tâm lỗ 12.5 cm Trung quốc ( phi 10 )", "SĐ-18KW-12.5cm"], img: "", desc: "" },
+    { n: "Thoi máy lập trình ổ to 181  KenLen", c: "THOI-MAY-LAP-TRINH-O-TO-181-KENLEN", u: "Chiếc", p: 0, v: 230000, t: 0, a: ["Thoi máy lập trình ổ to 181  KenLen", "KLSC-181"], img: "", desc: "" },
+    { n: "Suốt máy lập trình Juki 210", c: "SUOT-MAY-LAP-TRINH-JUKI-210", u: "Chiếc", p: 0, v: 15000, t: 0, a: ["Suốt máy lập trình Juki 210", "B1805-210-000"], img: "", desc: "" },
+    { n: "Thoi lập trình khổ lớn CHINKI", c: "THOI-LAP-TRINH-KHO-LON-CHINKI", u: "Chiếc", p: 0, v: 75000, t: 0, a: ["Thoi lập trình khổ lớn CHINKI", "BC-DBZ(6)NBL"], img: "", desc: "" },
+    { n: "Suốt lập trình khổ lớn CHINKI", c: "SUOT-LAP-TRINH-KHO-LON-CHINKI", u: "Chiếc", p: 0, v: 15000, t: 0, a: ["Suốt lập trình khổ lớn CHINKI", "JZ-1.6"], img: "", desc: "" },
+    { n: "Sợi Đốt NAWON Nhỏ TN-M1", c: "SOI-DOT-NAWON-NHO-TN-M1", u: "Chiếc", p: 0, v: 450000, t: 0, a: ["Sợi Đốt NAWON Nhỏ TN-M1", "TN-M1"], img: "", desc: "" },
+    { n: "Kim Groz Beckert FLG-1#11 RG 732602 kim mù", c: "KIM-GROZ-BECKERT-FLG-1-11-RG-732602-KIM", u: "Chiếc", p: 0, v: 4600, t: 0, a: ["Kim Groz Beckert FLG-1#11 RG 732602 kim mù", "FLG-1#11 RG"], img: "", desc: "" },
+    { n: "Thoi máy 1 kim ổ to phi 26mm", c: "THOI-MAY-1-KIM-O-TO-PHI-26MM", u: "Chiếc", p: 0, v: 35000, t: 0, a: ["Thoi máy 1 kim ổ to phi 26mm", "BC-6-7-NBL-T"], img: "", desc: "" },
+    { n: "Suốt nhôm 1 kim ổ to", c: "SUOT-NHOM-1-KIM-O-TO", u: "Chiếc", p: 0, v: 2000, t: 0, a: ["Suốt nhôm 1 kim ổ to", "18034A"], img: "", desc: "" },
+    { n: "Kim Hàn Quốc vắt gấu LWx6T#12", c: "KIM-HAN-QUOC-VAT-GAU-LWX6T-12", u: "Chiếc", p: 0, v: 8800, t: 0, a: ["Kim Hàn Quốc vắt gấu LWx6T#12", "LWx6T#12 HQ"], img: "", desc: "" },
+    { n: "Mỏ móc máy vắt gấu TREASURE BS - 101", c: "MO-MOC-MAY-VAT-GAU-TREASURE-BS-101", u: "Chiếc", p: 0, v: 45000, t: 0, a: ["Mỏ móc máy vắt gấu TREASURE BS - 101", "4039"], img: "", desc: "" },
+    { n: "BCL trần đè 2 kim chỉ tết Siruba C007 1/4", c: "BCL-TRAN-DE-2-KIM-CHI-TET-SIRUBA-C007-1", u: "Bộ", p: 0, v: 950000, t: 0, a: ["BCL trần đè 2 kim chỉ tết Siruba C007 1/4", "BCLTĐ2KCT-C007"], img: "", desc: "" },
+    { n: "Mực đen huê tinh 500ml", c: "MUC-DEN-HUE-TINH-500ML", u: "Lọ", p: 0, v: 260000, t: 0, a: ["Mực đen huê tinh 500ml"], img: "", desc: "" },
+    { n: "Kẹp vải đứng 8 inh QX", c: "KEP-VAI-DUNG-8-INH-QX", u: "Cái", p: 0, v: 36000, t: 0, a: ["Kẹp vải đứng 8 inh QX"], img: "", desc: "" },
+    { n: "Giấy đánh số meto # 3", c: "GIAY-DANH-SO-METO-3", u: "Cuộn", p: 0, v: 6500, t: 0, a: ["Giấy đánh số meto # 3"], img: "", desc: "" },
+    { n: "Thước cuộn To 82203", c: "THUOC-CUON-TO-82203", u: "Cái", p: 0, v: 21000, t: 0, a: ["Thước cuộn To 82203"], img: "", desc: "" },
+    { n: "Kéo 9 inh TQ", c: "KEO-9-INH-TQ", u: "Cái", p: 0, v: 95000, t: 0, a: ["Kéo 9 inh TQ"], img: "", desc: "" },
+    { n: "Đỡ kim trần đè pegasus  257553", c: "DO-KIM-TRAN-DE-PEGASUS-257553", u: "Cái", p: 0, v: 15000, t: 0, a: ["Đỡ kim trần đè pegasus  257553"], img: "", desc: "" },
+    { n: "kẹp vải 6 ink qxy", c: "KEP-VAI-6-INK-QXY", u: "Cái", p: 0, v: 36000, t: 0, a: ["kẹp vải 6 ink qxy"], img: "", desc: "" },
+    { n: "CHAN VIT TCR1/16N 2 LOP", c: "CHAN-VIT-TCR1-16N-2-LOP", u: "Cái", p: 0, v: 2910, t: 0, a: ["CHAN VIT TCR1/16N 2 LOP"], img: "", desc: "" },
+    { n: "CHAN VIT CR1/16N-AB", c: "CHAN-VIT-CR1-16N-AB", u: "Cái", p: 0, v: 5600, t: 0, a: ["CHAN VIT CR1/16N-AB"], img: "", desc: "" },
+    { n: "MAY SANG CHI WEIJIA-20S", c: "MAY-SANG-CHI-WEIJIA-20S", u: "Cái", p: 0, v: 1680000, t: 0, a: ["MAY SANG CHI WEIJIA-20S"], img: "", desc: "" },
+    { n: "DAY HOI CUNG XANH DEN 3M CUT LOI", c: "DAY-HOI-CUNG-XANH-DEN-3M-CUT-LOI", u: "Cái", p: 0, v: 63800, t: 0, a: ["DAY HOI CUNG XANH DEN 3M CUT LOI"], img: "", desc: "" },
+    { n: "BAN LA ES-94A CAM C", c: "BAN-LA-ES-94A-CAM-C", u: "Cái", p: 0, v: 560000, t: 0, a: ["BAN LA ES-94A CAM C"], img: "", desc: "" },
+    { n: "SUOT NHUOM 1 KIM MAY BAN 40264A", c: "SUOT-NHUOM-1-KIM-MAY-BAN-40264A", u: "Cái", p: 0, v: 0, t: 0, a: ["SUOT NHUOM 1 KIM MAY BAN 40264A"], img: "", desc: "" },
+    { n: "BANH GAP CHI DAI CONG TWE-7", c: "BANH-GAP-CHI-DAI-CONG-TWE-7-2", u: "Cái", p: 0, v: 2600, t: 0, a: ["BANH GAP CHI DAI CONG TWE-7"], img: "", desc: "" },
+    { n: "BO CANG THUN VS BANH XE SAT", c: "BO-CANG-THUN-VS-BANH-XE-SAT", u: "Cái", p: 0, v: 197000, t: 0, a: ["BO CANG THUN VS BANH XE SAT"], img: "", desc: "" },
+    { n: "MOTO LIEN TRUC TIEMA VC008", c: "MOTO-LIEN-TRUC-TIEMA-VC008", u: "Cái", p: 0, v: 790000, t: 0, a: ["MOTO LIEN TRUC TIEMA VC008"], img: "", desc: "" },
+    { n: "DUONG RAY 3.8M LEJIANG", c: "DUONG-RAY-3-8M-LEJIANG", u: "Cái", p: 0, v: 750000, t: 0, a: ["DUONG RAY 3.8M LEJIANG"], img: "", desc: "" },
+    { n: "CUM DONG TIEN JUKI5550", c: "CUM-DONG-TIEN-JUKI5550", u: "Cái", p: 0, v: 5700, t: 0, a: ["CUM DONG TIEN JUKI5550"], img: "", desc: "" },
+    { n: "RANG CUA 1 KIM DT FD-20T", c: "RANG-CUA-1-KIM-DT-FD-20T", u: "Cái", p: 0, v: 6800, t: 0, a: ["RANG CUA 1 KIM DT FD-20T"], img: "", desc: "" },
+    { n: "MAT NGUYET 1 KIM DT FD20", c: "MAT-NGUYET-1-KIM-DT-FD20", u: "Cái", p: 0, v: 4800, t: 0, a: ["MAT NGUYET 1 KIM DT FD20"], img: "", desc: "" },
+    { n: "MAY 23 KIM LIEN TRUC SI VC008-23D", c: "MAY-23-KIM-LIEN-TRUC-SI-VC008-23D", u: "Cái", p: 0, v: 14150000, t: 0, a: ["MAY 23 KIM LIEN TRUC SI VC008-23D"], img: "", desc: "" }
   ],
   // Giá theo từng NCC (từ DATA_NCC_GIA.csv) — 1 sản phẩm có thể có nhiều NCC báo giá khác nhau
   ncc: [
@@ -1420,7 +1513,89 @@ const appData = {
     { c: "KIM-DCX1-10-70-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim DCx1#10/70", sku: "KIMDCx1#10/70", gia: 2500, hoadon: true, ngay: "2026-05-05" },
     { c: "KIM-DBX1-KN-12-80-NHAT", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "KIMDBx1#12/80 (J) (korea)", sku: "KIMDBx1#12/80 (J) (korea)", gia: 1530, hoadon: true, ngay: "2026-05-08" },
     { c: "KIM-TVX7-9-65-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim TVx7#9/65 (J) (KOREA)", sku: "KIMTVx7#9/65 (J) (KOREA)", gia: 3300, hoadon: true, ngay: "2026-05-08" },
-    { c: "KIM-TVX7-11-75-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim TVx7#11/75 (J) (KOREA)", sku: "KIMTVx7#11/75 (J) (KOREA)", gia: 3300, hoadon: true, ngay: "2026-05-08" }
+    { c: "KIM-TVX7-11-75-J-HAN-QUOC", ncc: "Phồn Thịnh - Tae Gwang", ten_goi: "Kim TVx7#11/75 (J) (KOREA)", sku: "KIMTVx7#11/75 (J) (KOREA)", gia: 3300, hoadon: true, ngay: "2026-05-08" },
+    { c: "BANG-TAI-MAY-DAY-GAN-450MMX1540MM", ncc: "Đại Đồng", ten_goi: "Băng tải may dây gân 450mmx1540mm", sku: "", gia: 2350000, hoadon: false, ngay: "2026-03-02" },
+    { c: "MAT-NGUYET-MAY-TRAN-5-6MM-2", ncc: "Đại Đồng", ten_goi: "Mặt nguyệt máy trần 5.6mm 2", sku: "", gia: 65000, hoadon: false, ngay: "2026-03-04" },
+    { c: "NHIP-CHAN-VIT-TRAN-4-KIM", ncc: "Đại Đồng", ten_goi: "Nhíp chân vịt trân 4 kim", sku: "", gia: 56000, hoadon: false, ngay: "2026-03-05" },
+    { c: "CHAN-VIT-3-KIM-5-6MM", ncc: "Đại Đồng", ten_goi: "Chân vịt 3 kim 5.6mm", sku: "", gia: 85000, hoadon: false, ngay: "2026-03-04" },
+    { c: "DAO-TINH-DUOI-MAY-TRAI-VAI-M-15-TRAI-MA", ncc: "Đại Đồng", ten_goi: "Dao tĩnh dưới máy trải vải M-15 ( trái ) mã 84619002", sku: "", gia: 325000, hoadon: false, ngay: "2026-03-07" },
+    { c: "RANG-CUA-MAY-CHAN-DE-3-KIM-5-CHI-JUKI-MF", ncc: "Đại Đồng", ten_goi: "Răng cưa máy chần đè 3 kim 5 chỉ Juki MF7923 (5.6mm) 400-32900/400-40376 JY", sku: "", gia: 185000, hoadon: false, ngay: "2026-03-04" },
+    { c: "RANG-CUA-1-KIM-SAT-E-FD1839-18T-CO-CAT-C", ncc: "Đại Đồng", ten_goi: "Răng cưa 1 kim sắt E FD1839-18T ( có cắt chỉ )", sku: "", gia: 8500, hoadon: false, ngay: "2026-03-04" },
+    { c: "OC-CUM-LAI-MUI-1-KIM-JUKI", ncc: "Đại Đồng", ten_goi: "Ốc cụm lại mũi 1 kim Juki", sku: "", gia: 8000, hoadon: false, ngay: "2026-03-05" },
+    { c: "OC-BO-CAT-CHI", ncc: "Đại Đồng", ten_goi: "Ốc bộ cắt chỉ", sku: "", gia: 8000, hoadon: false, ngay: "2026-03-05" },
+    { c: "MANG-XEN-JACK-12812026", ncc: "Đại Đồng", ten_goi: "Máng xén Jack 12812026", sku: "", gia: 85000, hoadon: false, ngay: "2026-03-07" },
+    { c: "MANG-XEN-JACK-12812003", ncc: "Đại Đồng", ten_goi: "Máng xén Jack 12812003", sku: "", gia: 85000, hoadon: false, ngay: "2026-03-07" },
+    { c: "MAT-NGUYET-VAT-SO-277505R60", ncc: "Đại Đồng", ten_goi: "Mặt nguyệt vắt sổ 277505R60", sku: "", gia: 56000, hoadon: false, ngay: "2026-03-07" },
+    { c: "VBI-VONG-BI-608ZZ", ncc: "Đại Đồng", ten_goi: "Vòng bi 608ZZ", sku: "", gia: 65000, hoadon: false, ngay: "2026-03-14" },
+    { c: "MAY-CAT-NHIET-MINI-DUNG-TRONG-CONG-NGHIE", ncc: "Đại Đồng", ten_goi: "Máy cắt nhiệt mini dùng trong công nghiệp ngành may, chiều dài lưỡi dao21cm, công suất: 150W, điện áp 220v", sku: "", gia: 862000, hoadon: false, ngay: "2026-03-16" },
+    { c: "BO-CU-LY-VC008-12N-3-16", ncc: "Đại Đồng", ten_goi: "Bộ cự ly VC008-12N-3/16", sku: "", gia: 865000, hoadon: false, ngay: "2026-03-21" },
+    { c: "LK-BIEN-TRU-KIM-KANSAI-DFB140", ncc: "Đại Đồng", ten_goi: "Biên trụ kim Kansai DFB1404 66-111", sku: "", gia: 185000, hoadon: false, ngay: "2026-03-26" },
+    { c: "RC-MAY-VAT-SO-CO-NHO", ncc: "Đài Nhật", ten_goi: "RC máy vắt sổ cổ nhỏ", sku: "FD0243/DF3053", gia: 150000, hoadon: false, ngay: "2026-06-02" },
+    { c: "BCL-QUAN-ONG-3-KIM-BROTHER-JACK-928-1-4", ncc: "Đài Nhật", ten_goi: "BCL quấn ống 3 Kim Brother/ JACK 928 1/4 cv thấp may hàng mỏng", sku: "BCL-9280-1/4B", gia: 750000, hoadon: false, ngay: "2026-06-02" },
+    { c: "SOI-DOT-18KW-MAT-BICH-14-5-CM-TAM-LO-12", ncc: "Đài Nhật", ten_goi: "Sợi đốt 18KW mặt bích 14.5 cm/ tâm lỗ 12.5 cm Trung quốc ( phi 10 )", sku: "SĐ-18KW-12.5cm", gia: 550000, hoadon: false, ngay: "2026-06-04" },
+    { c: "NOIHOI-SOI-DOT-18KW-TAM-LO-12-CM", ncc: "Đài Nhật", ten_goi: "Sợi đốt 18KW tâm lỗ 12 cm ( MAI SO phi 10 )", sku: "SĐ-18KW-12CM-TQ", gia: 550000, hoadon: false, ngay: "2026-06-04" },
+    { c: "CV-MAY-TRAN-DE-BAP-BENH-5-6-M", ncc: "Đài Nhật", ten_goi: "CV máy trần đè bập bênh 5.6 mm", sku: "CVTĐBB-5.6", gia: 135000, hoadon: false, ngay: "2026-06-04" },
+    { c: "THOI-MAY-LAP-TRINH-O-TO-181-KENLEN", ncc: "Đài Nhật", ten_goi: "Thoi máy lập trình ổ to 181  KenLen", sku: "KLSC-181", gia: 230000, hoadon: false, ngay: "2026-06-10" },
+    { c: "SUOT-MAY-LAP-TRINH-JUKI-210", ncc: "Đài Nhật", ten_goi: "Suốt máy lập trình Juki 210", sku: "B1805-210-000", gia: 15000, hoadon: false, ngay: "2026-06-10" },
+    { c: "LK-CHAY-COI-DAP-CUC", ncc: "Đài Nhật", ten_goi: "Chầy cối dập cúc", sku: "ccdc", gia: 300000, hoadon: false, ngay: "2026-06-11" },
+    { c: "BANLA-KIM-NHAT-MAY-DOT-1-MAT-CPX", ncc: "Đài Nhật", ten_goi: "Kim Nhật máy đột 1 mặt CPx12#14", sku: "CPx12#14N", gia: 18188, hoadon: false, ngay: "2026-06-13" },
+    { c: "THOI-LAP-TRINH-KHO-LON-CHINKI", ncc: "Đài Nhật", ten_goi: "Thoi lập trình khổ lớn CHINKI", sku: "BC-DBZ(6)NBL", gia: 75000, hoadon: false, ngay: "2026-06-13" },
+    { c: "SUOT-LAP-TRINH-KHO-LON-CHINKI", ncc: "Đài Nhật", ten_goi: "Suốt lập trình khổ lớn CHINKI", sku: "JZ-1.6", gia: 15000, hoadon: false, ngay: "2026-06-13" },
+    { c: "SOI-DOT-NAWON-NHO-TN-M1", ncc: "Đài Nhật", ten_goi: "Sợi Đốt NAWON Nhỏ TN-M1", sku: "TN-M1", gia: 450000, hoadon: false, ngay: "2026-06-16" },
+    { c: "KIM-GROZ-BECKERT-FLG-1-11-RG-732602-KIM", ncc: "Đài Nhật", ten_goi: "Kim Groz Beckert FLG-1#11 RG 732602 kim mù", sku: "FLG-1#11 RG", gia: 4600, hoadon: false, ngay: "2026-06-18" },
+    { c: "THOI-MAY-1-KIM-O-TO-PHI-26MM", ncc: "Đài Nhật", ten_goi: "Thoi máy 1 kim ổ to phi 26mm", sku: "BC-6-7-NBL-T", gia: 35000, hoadon: false, ngay: "2026-06-22" },
+    { c: "SUOT-NHOM-1-KIM-O-TO", ncc: "Đài Nhật", ten_goi: "Suốt nhôm 1 kim ổ to", sku: "18034A", gia: 2000, hoadon: false, ngay: "2026-06-22" },
+    { c: "KIM-HAN-QUOC-VAT-GAU-LWX6T-12", ncc: "Đài Nhật", ten_goi: "Kim Hàn Quốc vắt gấu LWx6T#12", sku: "LWx6T#12 HQ", gia: 8800, hoadon: false, ngay: "2026-06-25" },
+    { c: "MO-MOC-MAY-VAT-GAU-TREASURE-BS-101", ncc: "Đài Nhật", ten_goi: "Mỏ móc máy vắt gấu TREASURE BS - 101", sku: "4039", gia: 45000, hoadon: false, ngay: "2026-06-25" },
+    { c: "BCL-TRAN-DE-2-KIM-CHI-TET-SIRUBA-C007-1", ncc: "Đài Nhật", ten_goi: "BCL trần đè 2 kim chỉ tết Siruba C007 1/4", sku: "BCLTĐ2KCT-C007", gia: 950000, hoadon: false, ngay: "2026-06-27" },
+    { c: "MARK-PHAN-BOT-1-KG", ncc: "Thanh Hoa", ten_goi: "Phấn bột 1 kg", sku: "", gia: 115000, hoadon: false, ngay: "2026-05-29" },
+    { c: "MUC-DEN-HUE-TINH-500ML", ncc: "Thanh Hoa", ten_goi: "Mực đen huê tinh 500ml", sku: "", gia: 260000, hoadon: false, ngay: "2026-05-29" },
+    { c: "KIM-BAO-VE-KIM-1-KIM", ncc: "Thanh Hoa", ten_goi: "Bảo vệ kim 1 kim", sku: "", gia: 1500, hoadon: false, ngay: "2026-05-29" },
+    { c: "BD-KEO-502-THUAN-PHONG", ncc: "Thanh Hoa", ten_goi: "Keo 502 Thuận Phong", sku: "", gia: 5500, hoadon: false, ngay: "2026-06-17" },
+    { c: "CAOSU-CAO-SU-DAY-MAI", ncc: "Thanh Hoa", ten_goi: "Cao su dây mài", sku: "", gia: 1500, hoadon: false, ngay: "2026-06-04" },
+    { c: "DAO-8E-STRONG-H", ncc: "Thanh Hoa", ten_goi: "Dao 8E Strong h", sku: "", gia: 110000, hoadon: false, ngay: "2026-06-11" },
+    { c: "KEO-BAM-INOX-FUCHAO", ncc: "Thanh Hoa", ten_goi: "Kéo bấm inox fuchao", sku: "", gia: 7000, hoadon: false, ngay: "2026-06-26" },
+    { c: "KEO-BAM-DJ-1071", ncc: "Thanh Hoa", ten_goi: "kéo bấm dj 1071", sku: "", gia: 6500, hoadon: false, ngay: "2026-06-08" },
+    { c: "MAY-DAP-SO-DELI-6-SO", ncc: "Thanh Hoa", ten_goi: "Máy dập số deli 6 số", sku: "", gia: 185000, hoadon: false, ngay: "2026-06-11" },
+    { c: "LK-MAY-DANH-SO-OPEN-2253-8-SO", ncc: "Thanh Hoa", ten_goi: "Máy đánh số OPEN 2253 (8 số)", sku: "", gia: 1450000, hoadon: false, ngay: "2026-06-11" },
+    { c: "KEP-VAI-DUNG-8-INH-QX", ncc: "Thanh Hoa", ten_goi: "Kẹp vải đứng 8 inh QX", sku: "", gia: 36000, hoadon: false, ngay: "2026-06-11" },
+    { c: "GIAY-DANH-SO-METO-3", ncc: "Thanh Hoa", ten_goi: "Giấy đánh số meto # 3", sku: "", gia: 6500, hoadon: false, ngay: "2026-06-26" },
+    { c: "LK-GANG-TAY-SAT-3-NGON", ncc: "Thanh Hoa", ten_goi: "Gang tay sắt 3 Ngón", sku: "", gia: 650000, hoadon: false, ngay: "2026-06-11" },
+    { c: "THUOC-CUON-TO-82203", ncc: "Thanh Hoa", ten_goi: "Thước cuộn To 82203", sku: "", gia: 21000, hoadon: false, ngay: "2026-06-11" },
+    { c: "KEO-9-INH-TQ", ncc: "Thanh Hoa", ten_goi: "Kéo 9 inh TQ", sku: "", gia: 95000, hoadon: false, ngay: "2026-06-11" },
+    { c: "DO-KIM-TRAN-DE-PEGASUS-257553", ncc: "Thanh Hoa", ten_goi: "Đỡ kim trần đè pegasus  257553", sku: "", gia: 15000, hoadon: false, ngay: "2026-06-11" },
+    { c: "BD-BANG-DINH-2-MAT-TRANG-1CM", ncc: "Thanh Hoa", ten_goi: "Băng dính 2 mặt trắng 1cm", sku: "", gia: 2500, hoadon: false, ngay: "2026-06-12" },
+    { c: "CU-LON-CO-AO", ncc: "Thanh Hoa", ten_goi: "Lộn cổ áo", sku: "", gia: 110000, hoadon: false, ngay: "2026-06-12" },
+    { c: "DAO-VONG-3600-STRONG-H", ncc: "Thanh Hoa", ten_goi: "Dao vòng 3600 strong h", sku: "", gia: 100000, hoadon: false, ngay: "2026-06-13" },
+    { c: "KEP-VAI-6-INK-QXY", ncc: "Thanh Hoa", ten_goi: "kẹp vải 6 ink qxy", sku: "", gia: 36000, hoadon: false, ngay: "2026-06-16" },
+    { c: "CHAN-VIT-TCR1-16N-2-LOP", ncc: "Đông Dương", ten_goi: "CHAN VIT TCR1/16N 2 LOP", sku: "", gia: 2910, hoadon: false, ngay: "2026-01-15" },
+    { c: "CHAN-VIT-CR1-16N-AB", ncc: "Đông Dương", ten_goi: "CHAN VIT CR1/16N-AB", sku: "", gia: 5600, hoadon: false, ngay: "2026-01-15" },
+    { c: "MAYCAT-MAY-CAT-DAU-BAN-YJ-108", ncc: "Đông Dương", ten_goi: "MAY CAT DAU BAN YJ-108", sku: "", gia: 2280000, hoadon: false, ngay: "2026-03-13" },
+    { c: "LK-DUONG-RAY-2-8M-LEJIANG", ncc: "Đông Dương", ten_goi: "DUONG RAY 2.8M LEJIANG", sku: "", gia: 450000, hoadon: false, ngay: "2026-01-21" },
+    { c: "MAYCAT-MAY-CAT-DAU-BAN-TIEMA", ncc: "Đông Dương", ten_goi: "MAY CAT DAU BAN TIEMA", sku: "", gia: 2090000, hoadon: false, ngay: "2026-01-22" },
+    { c: "LK-DUONG-RAY-2-8M", ncc: "Đông Dương", ten_goi: "DUONG RAY 2.8M", sku: "", gia: 450000, hoadon: false, ngay: "2026-01-22" },
+    { c: "MAY-SANG-CHI-WEIJIA-20S", ncc: "Đông Dương", ten_goi: "MAY SANG CHI WEIJIA-20S", sku: "", gia: 1680000, hoadon: false, ngay: "2026-01-22" },
+    { c: "DO-DEN-CAN-DAI-SIPUBA-810B-BO", ncc: "Đông Dương", ten_goi: "DEN CAN DAI SIPUBA 810B BONG LOI", sku: "", gia: 24700, hoadon: false, ngay: "2026-01-23" },
+    { c: "DAYHOI-DAY-HOI-CUNG-XANH-DEN-5M-C", ncc: "Đông Dương", ten_goi: "DAY HOI CUNG XANH DEN 5M CUT LOI", sku: "", gia: 93000, hoadon: false, ngay: "2026-03-18" },
+    { c: "DAY-HOI-CUNG-XANH-DEN-3M-CUT-LOI", ncc: "Đông Dương", ten_goi: "DAY HOI CUNG XANH DEN 3M CUT LOI", sku: "", gia: 63800, hoadon: false, ngay: "2026-03-03" },
+    { c: "MAY-SANG-CHI-WEIJIE-20S", ncc: "Đông Dương", ten_goi: "MAY SANG CHI WEIJIE-20S", sku: "", gia: 1650000, hoadon: false, ngay: "2026-03-03" },
+    { c: "BAN-LA-ES-94A-CAM-C", ncc: "Đông Dương", ten_goi: "BAN LA ES-94A CAM C", sku: "", gia: 560000, hoadon: false, ngay: "2026-03-17" },
+    { c: "BANLA-TAT-LA-ES-94A-TIEMA-B", ncc: "Đông Dương", ten_goi: "TAT LA ES-94A TIEMA-B", sku: "", gia: 28000, hoadon: false, ngay: "2026-03-04" },
+    { c: "MARK-VIET-UI-TU-BAY-2-4-XANH", ncc: "Đông Dương", ten_goi: "VIET UI TU BAY 2.4 XANH", sku: "", gia: 0, hoadon: false, ngay: "2026-03-04" },
+    { c: "SUOT-NHUOM-1-KIM-MAY-BAN-40264A", ncc: "Đông Dương", ten_goi: "SUOT NHUOM 1 KIM MAY BAN 40264A", sku: "", gia: 0, hoadon: false, ngay: "2026-03-04" },
+    { c: "CV-CHAN-VIT-T36N", ncc: "Đông Dương", ten_goi: "CHAN VIT T36N", sku: "", gia: 2600, hoadon: false, ngay: "2026-03-17" },
+    { c: "KE-NAM-CHAM-TO-THUONG-G20", ncc: "Đông Dương", ten_goi: "KE NAM CHAM TO THUONG G20", sku: "", gia: 3200, hoadon: false, ngay: "2026-03-10" },
+    { c: "DIA-VIEN", ncc: "Đông Dương", ten_goi: "DIA VIEN", sku: "", gia: 45300, hoadon: false, ngay: "2026-03-10" },
+    { c: "THOI-1-KIM-CO-LAY-JYF", ncc: "Đông Dương", ten_goi: "THOI 1 KIM CO LAY JYF", sku: "", gia: 8400, hoadon: false, ngay: "2026-03-11" },
+    { c: "BANH-GAP-CHI-DAI-CONG-TWE-7-2", ncc: "Đông Dương", ten_goi: "BANH GAP CHI DAI CONG TWE-7", sku: "", gia: 2600, hoadon: false, ngay: "2026-03-10" },
+    { c: "BO-CANG-THUN-VS-BANH-XE-SAT", ncc: "Đông Dương", ten_goi: "BO CANG THUN VS BANH XE SAT", sku: "", gia: 197000, hoadon: false, ngay: "2026-03-10" },
+    { c: "MOTO-LIEN-TRUC-TIEMA-VC008", ncc: "Đông Dương", ten_goi: "MOTO LIEN TRUC TIEMA VC008", sku: "", gia: 790000, hoadon: false, ngay: "2026-03-10" },
+    { c: "DUONG-RAY-3-8M-LEJIANG", ncc: "Đông Dương", ten_goi: "DUONG RAY 3.8M LEJIANG", sku: "", gia: 750000, hoadon: false, ngay: "2026-03-13" },
+    { c: "CUM-DONG-TIEN-JUKI5550", ncc: "Đông Dương", ten_goi: "CUM DONG TIEN JUKI5550", sku: "", gia: 5700, hoadon: false, ngay: "2026-03-17" },
+    { c: "RANG-CUA-1-KIM-DT-FD-20T", ncc: "Đông Dương", ten_goi: "RANG CUA 1 KIM DT FD-20T", sku: "", gia: 6800, hoadon: false, ngay: "2026-03-17" },
+    { c: "MAT-NGUYET-1-KIM-DT-FD20", ncc: "Đông Dương", ten_goi: "MAT NGUYET 1 KIM DT FD20", sku: "", gia: 4800, hoadon: false, ngay: "2026-03-17" },
+    { c: "DEN-CAN-DAI-SIPUBA-830B-BONG-L", ncc: "Đông Dương", ten_goi: "DEN CAN DAI SIPUBA 830B BONG LOI", sku: "", gia: 31000, hoadon: false, ngay: "2026-03-17" },
+    { c: "MAY-23-KIM-LIEN-TRUC-SI-VC008-23D", ncc: "Đông Dương", ten_goi: "MAY 23 KIM LIEN TRUC SI VC008-23D", sku: "", gia: 14150000, hoadon: false, ngay: "2026-03-17" }
   ]
 };
 
@@ -1487,7 +1662,8 @@ function switchTab(tabIdx) {
   event.target.classList.add('active');
 
   if (tabIdx === 2) loadSavedQuotes();
-  if (tabIdx === 3) { renderMachineCompat(); calcLandedCost(); renderLowStock(); }
+  if (tabIdx === 3) { renderMachineCompat(); calcLandedCost(); renderLowStock(); renderMergeReview(); renderSupplierCompare(); renderSupSearch(); }
+  if (tabIdx === 4) renderOrders();
 }
 
 function renderMachineCompat() {
@@ -1603,7 +1779,17 @@ function renderNccCompare(code) {
   if (rows.length === 0) return '';
   rows = rows.slice().sort((a, b) => a.gia - b.gia);
   let best = rows[0].gia;
-  return '<h4 style="margin-top:12px;">🏭 So sánh giá NCC</h4><table><thead><tr><th>NCC</th><th>Tên NCC gọi</th><th>Giá</th><th>Hóa đơn</th><th>Ngày báo</th></tr></thead><tbody>' +
+  let worst = rows[rows.length - 1].gia;
+  let nNcc = new Set(rows.map(r => r.ncc)).size;
+  let header = '<h4 style="margin-top:12px;">🏭 So sánh giá NCC <span style="font-weight:normal;color:#666;font-size:13px;">(' + nNcc + ' NCC, ' + rows.length + ' báo giá)</span></h4>';
+  if (rows.length >= 2 && worst > best) {
+    let savePct = Math.round((worst - best) / worst * 100);
+    header += '<p style="color:#2e7d32;font-size:13px;margin:4px 0;">💡 Chọn NCC rẻ nhất tiết kiệm ' +
+      formatPrice(worst - best) + ' (' + savePct + '%) so với NCC đắt nhất.</p>';
+  } else if (nNcc < 2) {
+    header += '<p style="color:#999;font-size:12px;margin:4px 0;">Mới có 1 NCC báo giá mặt hàng này — nạp thêm bảng giá NCC khác để so sánh.</p>';
+  }
+  return header + '<table><thead><tr><th>NCC</th><th>Tên NCC gọi</th><th>Giá</th><th>Hóa đơn</th><th>Ngày báo</th></tr></thead><tbody>' +
     rows.map(r => `<tr${r.gia === best ? ' style="background:#eaffea;"' : ''}><td>${escapeHtml(r.ncc)}</td><td>${escapeHtml(r.ten_goi)}</td><td>${formatPrice(r.gia)}${r.gia === best ? ' ✅' : ''}</td><td>${r.hoadon ? 'Có' : 'Không'}</td><td>${r.ngay || ''}</td></tr>`).join('') +
     '</tbody></table>';
 }
@@ -1813,6 +1999,376 @@ function deleteQuote(idx) {
     localStorage.setItem('savedQuotes', JSON.stringify(savedQuotes));
     loadSavedQuotes();
   }
+}
+
+// ===== RÀ SOÁT & GỘP SẢN PHẨM NGHI TRÙNG (chỉ Chủ) =====
+let mergeChoice = {}; // key nhóm -> chỉ số sản phẩm được chọn giữ lại
+
+function mergeKey(name) {
+  // Chuẩn hóa tên để gom nhóm: bỏ dấu, thường hóa, gộp khoảng trắng
+  return normalizeVN(name).replace(/\s+/g, ' ').trim();
+}
+
+function mergeKeyFuzzy(name) {
+  // Gần đúng: bỏ luôn ký tự không phải chữ/số (dấu #, /, (), khoảng trắng...)
+  return normalizeVN(name).replace(/[^a-z0-9]/g, '');
+}
+
+function pickDefaultKeep(idxs) {
+  // Ưu tiên: tồn cao nhất -> có giá bán -> nhiều alias -> mã ngắn/gọn nhất
+  return idxs.slice().sort((x, y) => {
+    let a = appData.s[x], b = appData.s[y];
+    return (b.t - a.t)
+        || ((b.p > 0 ? 1 : 0) - (a.p > 0 ? 1 : 0))
+        || ((b.a ? b.a.length : 0) - (a.a ? a.a.length : 0))
+        || (a.c.length - b.c.length);
+  })[0];
+}
+
+function buildMergeGroups() {
+  let fuzzy = document.getElementById('mergeFuzzy') && document.getElementById('mergeFuzzy').checked;
+  let keyFn = fuzzy ? mergeKeyFuzzy : mergeKey;
+  let map = {};
+  appData.s.forEach((p, i) => {
+    let k = keyFn(p.n);
+    if (!k) return;
+    (map[k] = map[k] || []).push(i);
+  });
+  return Object.keys(map)
+    .filter(k => map[k].length > 1)
+    .map(k => ({ key: k, name: appData.s[map[k][0]].n, idxs: map[k] }))
+    .sort((a, b) => b.idxs.length - a.idxs.length || a.name.localeCompare(b.name, 'vi'));
+}
+
+function setMergeKeep(key, idx) {
+  mergeChoice[key] = idx;
+  // Cập nhật lại tô nền dòng được giữ mà không dựng lại toàn bộ
+  document.querySelectorAll('tr[data-gk="' + CSS.escape(key) + '"]').forEach(tr => {
+    tr.style.background = (parseInt(tr.dataset.idx) === idx) ? '#eaffea' : '';
+  });
+}
+
+function renderMergeReview() {
+  let div = document.getElementById('mergeReviewResult');
+  if (!div) return;
+  if (userData.mode !== 'owner') {
+    div.innerHTML = '<p style="color:#999;">🔒 Chỉ Chủ mới xem được mục này (có hiển thị giá vốn).</p>';
+    return;
+  }
+  let groups = buildMergeGroups();
+  if (groups.length === 0) {
+    div.innerHTML = '<p style="color:#2e7d32;">✅ Không tìm thấy sản phẩm nghi trùng.</p>';
+    return;
+  }
+  let totalItems = groups.reduce((s, g) => s + g.idxs.length, 0);
+  let html = '<p style="margin-bottom:12px;color:#c0392b;font-weight:bold;">Tìm thấy ' + groups.length +
+    ' nhóm nghi trùng (' + totalItems + ' sản phẩm). Chọn mã giữ lại cho từng nhóm:</p>';
+  groups.forEach((g, gi) => {
+    let keep = (g.key in mergeChoice) ? mergeChoice[g.key] : pickDefaultKeep(g.idxs);
+    mergeChoice[g.key] = keep;
+    let ordered = g.idxs.slice().sort((x, y) => (x === keep ? -1 : y === keep ? 1 : appData.s[y].t - appData.s[x].t));
+    html += '<div style="border:1px solid #ddd;border-radius:6px;padding:10px;margin-bottom:12px;">' +
+      '<div style="font-weight:bold;color:#1f5c8a;margin-bottom:6px;">' + (gi + 1) + '. ' + escapeHtml(g.name) +
+      ' <span style="color:#999;font-weight:normal;">(' + g.idxs.length + ' mã)</span></div>' +
+      '<table><thead><tr><th>Giữ</th><th>Tên</th><th>Mã chuẩn</th><th>ĐV</th><th>Giá bán</th><th>Giá vốn</th><th>Tồn</th><th>Alias</th></tr></thead><tbody>' +
+      ordered.map(i => {
+        let p = appData.s[i];
+        return '<tr data-gk="' + escapeHtml(g.key) + '" data-idx="' + i + '"' + (i === keep ? ' style="background:#eaffea;"' : '') + '>' +
+          '<td style="text-align:center;"><input type="radio" name="keep_' + gi + '" ' + (i === keep ? 'checked' : '') +
+            ' onclick="setMergeKeep(\'' + g.key.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\',' + i + ')"></td>' +
+          '<td>' + escapeHtml(p.n) + '</td>' +
+          '<td><code>' + escapeHtml(p.c) + '</code></td>' +
+          '<td>' + escapeHtml(p.u || '') + '</td>' +
+          '<td>' + formatPrice(p.p) + '</td>' +
+          '<td style="color:#c0392b;">' + formatPrice(p.v) + '</td>' +
+          '<td style="text-align:center;font-weight:bold;">' + p.t + '</td>' +
+          '<td style="color:#999;font-size:12px;">' + escapeHtml((p.a || []).join(', ')) + '</td>' +
+          '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
+  });
+  div.innerHTML = html;
+}
+
+function exportMergeDecisions() {
+  if (userData.mode !== 'owner') { alert('🔒 Chỉ Chủ mới xuất được file này.'); return; }
+  let groups = buildMergeGroups();
+  if (groups.length === 0) { alert('✅ Không có nhóm nghi trùng để xuất.'); return; }
+  let rows = [['STT', 'Ten_SP', 'Giu_Lai_Ma', 'Gop_Cac_Ma', 'So_Bien_The', 'Tong_Ton']];
+  groups.forEach((g, gi) => {
+    let keep = (g.key in mergeChoice) ? mergeChoice[g.key] : pickDefaultKeep(g.idxs);
+    let mergeCodes = g.idxs.filter(i => i !== keep).map(i => appData.s[i].c);
+    let tongTon = g.idxs.reduce((s, i) => s + (appData.s[i].t || 0), 0);
+    rows.push([gi + 1, g.name, appData.s[keep].c, mergeCodes.join(' | '), g.idxs.length, tongTon]);
+  });
+  let csv = rows.map(r => r.map(c => {
+    let s = String(c == null ? '' : c);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }).join(',')).join('\r\n');
+  let today = new Date();
+  let fn = 'RaSoat_GopSP_' + today.getFullYear() +
+    String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0') + '.csv';
+  let blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  let a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fn;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  alert('✅ Đã xuất ' + (rows.length - 1) + ' nhóm ra file ' + fn);
+}
+
+function supPriceMatrix() {
+  let byCode = {};
+  appData.ncc.forEach(r => { (byCode[r.c] = byCode[r.c] || []).push(r); });
+  return byCode;
+}
+
+function renderSupplierCompare() {
+  let div = document.getElementById('supCompareResult');
+  if (!div) return;
+  if (userData.mode !== 'owner') { div.innerHTML = '<p style="color:#999;">🔒 Chỉ Chủ mới xem được mục này (có giá NCC).</p>'; return; }
+  let byCode = supPriceMatrix();
+  let codes = Object.keys(byCode);
+  let suppliers = [...new Set(appData.ncc.map(r => r.ncc))].sort((a, b) => a.localeCompare(b, 'vi'));
+  let multi = codes.filter(c => new Set(byCode[c].map(r => r.ncc)).size >= 2);
+  let nameOf = c => { let p = appData.s.find(x => x.c === c); return p ? p.n : c; };
+
+  let html = '<p style="margin-bottom:8px;">📊 <strong>' + suppliers.length + '</strong> nhà cung cấp · <strong>' +
+    codes.length + '</strong> mặt hàng có giá NCC · <strong>' + multi.length + '</strong> mặt hàng so sánh được (≥2 NCC).</p>';
+
+  html += '<h4 style="margin-top:10px;">🥇 Mặt hàng nhiều NCC — NCC rẻ nhất</h4>';
+  if (multi.length === 0) {
+    html += '<p style="color:#999;">Hiện mỗi mặt hàng mới có 1 NCC báo giá. Khi nạp thêm bảng giá NCC khác cho CÙNG mặt hàng, bảng so sánh sẽ tự hiện ở đây.</p>';
+  } else {
+    html += '<table><thead><tr><th>Mặt hàng</th><th>Số NCC</th><th>NCC rẻ nhất</th><th>Giá rẻ nhất</th><th>Giá cao nhất</th><th>Tiết kiệm</th></tr></thead><tbody>';
+    multi.forEach(c => {
+      let rows = byCode[c].slice().sort((a, b) => a.gia - b.gia);
+      let best = rows[0], worst = rows[rows.length - 1];
+      let pct = worst.gia > 0 ? Math.round((worst.gia - best.gia) / worst.gia * 100) : 0;
+      html += '<tr><td>' + escapeHtml(nameOf(c)) + '</td><td style="text-align:center;">' + new Set(rows.map(r => r.ncc)).size +
+        '</td><td>' + escapeHtml(best.ncc) + '</td><td style="color:#2e7d32;font-weight:bold;">' + formatPrice(best.gia) +
+        '</td><td>' + formatPrice(worst.gia) + '</td><td style="color:#2e7d32;">' + formatPrice(worst.gia - best.gia) + ' (' + pct + '%)</td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  html += '<h4 style="margin-top:14px;">🏭 Xem giá theo nhà cung cấp</h4>';
+  let sel = document.getElementById('supFilter');
+  let cur = sel ? sel.value : '';
+  html += '<select id="supFilter" onchange="renderSupplierCompare()" style="margin-bottom:8px;padding:6px;"><option value="">— Tất cả NCC —</option>' +
+    suppliers.map(s => '<option value="' + escapeHtml(s) + '"' + (s === cur ? ' selected' : '') + '>' + escapeHtml(s) + '</option>').join('') + '</select>';
+  let list = appData.ncc.filter(r => !cur || r.ncc === cur).slice()
+    .sort((a, b) => a.ncc.localeCompare(b.ncc, 'vi') || (a.ten_goi || '').localeCompare(b.ten_goi || '', 'vi'));
+  html += '<p style="color:#666;font-size:13px;">' + list.length + ' dòng giá.</p>';
+  html += '<table><thead><tr><th>NCC</th><th>Tên NCC gọi</th><th>Mã chuẩn</th><th>Giá</th><th>Ngày báo</th></tr></thead><tbody>' +
+    list.slice(0, 300).map(r => '<tr><td>' + escapeHtml(r.ncc) + '</td><td>' + escapeHtml(r.ten_goi) + '</td><td><code>' +
+      escapeHtml(r.c) + '</code></td><td>' + formatPrice(r.gia) + '</td><td>' + escapeHtml(r.ngay || '') + '</td></tr>').join('') +
+    '</tbody></table>';
+  if (list.length > 300) html += '<p style="color:#999;">... còn ' + (list.length - 300) + ' dòng nữa (dùng nút Xuất CSV để xem hết).</p>';
+  div.innerHTML = html;
+}
+
+function renderSupSearch() {
+  let div = document.getElementById('supSearchResult');
+  if (!div) return;
+  if (userData.mode !== 'owner') { div.innerHTML = ''; return; }
+  let inp = document.getElementById('supSearchInput');
+  let kw = normalizeVN((inp ? inp.value : '').trim());
+  if (!kw) { div.innerHTML = '<p style="color:#999;font-size:13px;">Gõ từ khóa (tên/mã) để xem giá mặt hàng đó ở TẤT CẢ nhà cung cấp — rẻ nhất tô xanh.</p>'; return; }
+  let rows = appData.ncc.filter(r =>
+    normalizeVN(r.ten_goi).includes(kw) || normalizeVN(r.c).includes(kw) || normalizeVN(r.sku || '').includes(kw));
+  if (rows.length === 0) { div.innerHTML = '<p style="color:#999;">Không thấy mặt hàng nào khớp từ khóa này ở các NCC.</p>'; return; }
+  rows = rows.slice().sort((a, b) => a.gia - b.gia);
+  let best = rows[0], worst = rows[rows.length - 1];
+  let nNcc = new Set(rows.map(r => r.ncc)).size;
+  let html = '<p style="margin:6px 0;">Tìm thấy <strong>' + rows.length + '</strong> báo giá từ <strong>' + nNcc + '</strong> NCC. ';
+  if (nNcc >= 2 && worst.gia > best.gia) {
+    let pct = Math.round((worst.gia - best.gia) / worst.gia * 100);
+    html += '🥇 Rẻ nhất: <strong style="color:#2e7d32;">' + escapeHtml(best.ncc) + '</strong> (' + formatPrice(best.gia) +
+      '), tiết kiệm ' + formatPrice(worst.gia - best.gia) + ' (' + pct + '%) so với ' + escapeHtml(worst.ncc) + '.';
+  } else if (nNcc < 2) {
+    html += 'Mới có 1 NCC báo giá nhóm này.';
+  }
+  html += '</p><table><thead><tr><th>NCC</th><th>Tên NCC gọi</th><th>Mã chuẩn</th><th>Giá</th><th>Ngày báo</th></tr></thead><tbody>' +
+    rows.slice(0, 100).map(r => '<tr' + (r.gia === best.gia ? ' style="background:#eaffea;"' : '') + '><td>' + escapeHtml(r.ncc) +
+      '</td><td>' + escapeHtml(r.ten_goi) + '</td><td><code>' + escapeHtml(r.c) + '</code></td><td>' + formatPrice(r.gia) +
+      (r.gia === best.gia ? ' ✅' : '') + '</td><td>' + escapeHtml(r.ngay || '') + '</td></tr>').join('') + '</tbody></table>';
+  if (rows.length > 100) html += '<p style="color:#999;">... còn ' + (rows.length - 100) + ' dòng nữa, gõ cụ thể hơn để lọc.</p>';
+  div.innerHTML = html;
+}
+
+function exportSupplierCompare() {
+  if (userData.mode !== 'owner') { alert('🔒 Chỉ Chủ mới xuất được file này.'); return; }
+  let byCode = supPriceMatrix();
+  let suppliers = [...new Set(appData.ncc.map(r => r.ncc))].sort((a, b) => a.localeCompare(b, 'vi'));
+  let nameOf = c => { let p = appData.s.find(x => x.c === c); return p ? p.n : c; };
+  let rows = [['Mat_hang', 'Ma_chuan'].concat(suppliers).concat(['NCC_re_nhat', 'Gia_re_nhat'])];
+  Object.keys(byCode).forEach(c => {
+    let m = {};
+    byCode[c].forEach(r => { if (!(r.ncc in m) || r.gia < m[r.ncc]) m[r.ncc] = r.gia; });
+    let best = null;
+    suppliers.forEach(s => { if (s in m && (best === null || m[s] < m[best])) best = s; });
+    rows.push([nameOf(c), c].concat(suppliers.map(s => s in m ? m[s] : '')).concat([best || '', best ? m[best] : '']));
+  });
+  let csv = rows.map(r => r.map(x => { let s = String(x == null ? '' : x); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(',')).join('\r\n');
+  let d = new Date();
+  let fn = 'SoSanh_NCC_' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '.csv';
+  let blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  let a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = fn; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  alert('✅ Đã xuất ma trận so sánh NCC ra ' + fn);
+}
+
+// ===== QUẢN LÝ ĐƠN HÀNG =====
+const ORDER_STATUS = [
+  { k: 'moi', label: '🆕 Mới', color: '#f39c12' },
+  { k: 'dat_ncc', label: '📦 Đã đặt NCC', color: '#2980b9' },
+  { k: 'dang_giao', label: '🚚 Đang giao', color: '#8e44ad' },
+  { k: 'hoan_thanh', label: '✅ Hoàn thành', color: '#27ae60' },
+  { k: 'huy', label: '❌ Đã hủy', color: '#c0392b' }
+];
+let orders = [];
+let orderDraft = null;
+
+function loadOrders() { orders = JSON.parse(localStorage.getItem('orders') || '[]'); }
+function persistOrders() { try { localStorage.setItem('orders', JSON.stringify(orders)); return true; } catch (e) { alert('❌ Bộ nhớ trình duyệt đầy, không lưu được đơn. Hãy xuất CSV rồi xóa bớt đơn cũ.'); return false; } }
+function statusMeta(k) { return ORDER_STATUS.find(s => s.k === k) || ORDER_STATUS[0]; }
+function orderTotal(o) { return (o.items || []).reduce((s, it) => s + (it.qty * it.price), 0); }
+function ordField(label, id, val, type) { return '<div class="form-group"><label>' + label + '</label><input type="' + (type || 'text') + '" id="' + id + '" value="' + escapeHtml(val || '') + '"></div>'; }
+
+function fillQuoteDropdown() {
+  let sel = document.getElementById('orderFromQuote'); if (!sel) return;
+  let sq = JSON.parse(localStorage.getItem('savedQuotes') || '[]');
+  sel.innerHTML = '<option value="">— Tạo đơn từ báo giá đã lưu —</option>' +
+    sq.map((q, i) => '<option value="' + i + '">' + escapeHtml((q.no || '') + ' · ' + (q.customer || '')) + '</option>').join('');
+  sel.onchange = function () { if (sel.value !== '') { orderFromQuote(parseInt(sel.value)); sel.value = ''; } };
+}
+
+function newOrder() {
+  orderDraft = { id: 'DH-' + Date.now(), date: new Date().toISOString().slice(0, 10), customer: '', phone: '', address: '',
+    items: [], supplier: '', ship: '', eta: '', status: 'moi', note: '', createdAt: new Date().toISOString(), _new: true };
+  renderOrderForm();
+}
+function orderFromQuote(i) {
+  let sq = JSON.parse(localStorage.getItem('savedQuotes') || '[]'); let q = sq[i]; if (!q) return;
+  orderDraft = { id: 'DH-' + Date.now(), date: new Date().toISOString().slice(0, 10), customer: q.customer || '', phone: q.phone || '', address: q.address || '',
+    items: (q.items || []).map(it => ({ name: it.name, code: it.code, qty: it.qty, price: it.price, note: it.note || '' })),
+    supplier: '', ship: '', eta: '', status: 'moi', note: 'Tạo từ báo giá ' + (q.no || ''), createdAt: new Date().toISOString(), _new: true, fromQuote: q.no };
+  switchTab(4); renderOrderForm();
+}
+
+function renderOrderForm() {
+  let w = document.getElementById('orderFormWrap'); if (!w) return;
+  if (!orderDraft) { w.innerHTML = ''; return; }
+  let o = orderDraft;
+  w.innerHTML = '<div class="card" style="background:#f8fbff;border:1px solid #cfe2f3;">' +
+    '<h3>' + (o._new ? '➕ Đơn mới ' : '✏️ Sửa đơn ') + escapeHtml(o.id) + '</h3>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+      ordField('Khách hàng', 'o_customer', o.customer) + ordField('SĐT', 'o_phone', o.phone) +
+      ordField('Địa chỉ', 'o_address', o.address) + ordField('NCC dự kiến đặt', 'o_supplier', o.supplier) +
+      ordField('Nhà xe / giao vận', 'o_ship', o.ship) + ordField('Ngày giao dự kiến', 'o_eta', o.eta, 'date') +
+    '</div>' +
+    '<div class="form-group"><label>Ghi chú</label><input type="text" id="o_note" value="' + escapeHtml(o.note) + '"></div>' +
+    '<h4>Mặt hàng</h4>' +
+    '<div style="margin-bottom:6px;position:relative;"><input type="text" id="o_itemSearch" placeholder="Gõ tên/mã để thêm mặt hàng..." oninput="orderItemSearch()" style="width:100%;"><div id="o_itemResults" style="display:none;position:absolute;z-index:10;background:#fff;border:1px solid #ccc;width:100%;max-height:220px;overflow:auto;"></div></div>' +
+    orderItemsTable(o) +
+    '<div style="margin-top:10px;"><button onclick="saveOrder()">💾 Lưu đơn</button> <button onclick="cancelOrderForm()" style="background:#888;">Hủy</button></div>' +
+  '</div>';
+}
+function orderItemsTable(o) {
+  if (!o.items.length) return '<p style="color:#999;">Chưa có mặt hàng. Dùng ô tìm ở trên để thêm.</p>';
+  return '<table><thead><tr><th>Tên</th><th>Mã</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th><th></th></tr></thead><tbody>' +
+    o.items.map((it, i) => '<tr><td>' + escapeHtml(it.name) + '</td><td><code>' + escapeHtml(it.code || '') + '</code></td>' +
+      '<td><input type="number" value="' + it.qty + '" style="width:60px;" onchange="orderItemChange(' + i + ',\'qty\',this.value)"></td>' +
+      '<td><input type="number" value="' + it.price + '" style="width:90px;" onchange="orderItemChange(' + i + ',\'price\',this.value)"></td>' +
+      '<td>' + formatPrice(it.qty * it.price) + '</td>' +
+      '<td><button onclick="orderItemRemove(' + i + ')" style="background:#c0392b;padding:4px 8px;">X</button></td></tr>').join('') +
+    '</tbody></table><p style="text-align:right;font-weight:bold;">Tổng: ' + formatPrice(orderTotal(o)) + '</p>';
+}
+function orderItemSearch() {
+  let kw = normalizeVN(document.getElementById('o_itemSearch').value.trim());
+  let box = document.getElementById('o_itemResults');
+  if (!kw) { box.style.display = 'none'; return; }
+  let res = appData.s.filter(p => normalizeVN(p.n).includes(kw) || normalizeVN(p.c).includes(kw) || (p.a && p.a.some(a => normalizeVN(a).includes(kw)))).slice(0, 8);
+  box.innerHTML = res.map(p => '<div style="padding:8px;border-bottom:1px solid #eee;cursor:pointer;" onclick="orderAddItem(\'' + p.c.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">' + escapeHtml(p.n) + ' <code>' + escapeHtml(p.c) + '</code></div>').join('') || '<div style="padding:8px;color:#999;">Không thấy</div>';
+  box.style.display = 'block';
+}
+function orderAddItem(code) {
+  let p = appData.s.find(x => x.c === code); if (!p || !orderDraft) return;
+  orderDraft.items.push({ name: p.n, code: p.c, qty: 1, price: p.p || 0, note: '' });
+  renderOrderForm();
+}
+function orderItemChange(i, f, v) { orderDraft.items[i][f] = parseFloat(v) || 0; renderOrderForm(); }
+function orderItemRemove(i) { orderDraft.items.splice(i, 1); renderOrderForm(); }
+function cancelOrderForm() { orderDraft = null; renderOrderForm(); }
+
+function saveOrder() {
+  if (!orderDraft) return;
+  orderDraft.customer = document.getElementById('o_customer').value;
+  orderDraft.phone = document.getElementById('o_phone').value;
+  orderDraft.address = document.getElementById('o_address').value;
+  orderDraft.supplier = document.getElementById('o_supplier').value;
+  orderDraft.ship = document.getElementById('o_ship').value;
+  orderDraft.eta = document.getElementById('o_eta').value;
+  orderDraft.note = document.getElementById('o_note').value;
+  if (!orderDraft.customer && orderDraft.items.length === 0) { alert('❌ Nhập tên khách hoặc thêm mặt hàng trước khi lưu.'); return; }
+  loadOrders();
+  let ex = orders.findIndex(x => x.id === orderDraft.id);
+  let d = JSON.parse(JSON.stringify(orderDraft)); delete d._new;
+  if (ex >= 0) orders[ex] = d; else orders.unshift(d);
+  if (persistOrders()) { orderDraft = null; renderOrderForm(); renderOrders(); alert('✅ Đã lưu đơn ' + d.id); }
+}
+function setOrderStatus(id, st) { loadOrders(); let o = orders.find(x => x.id === id); if (o) { o.status = st; persistOrders(); renderOrders(); } }
+function editOrder(id) { loadOrders(); let o = orders.find(x => x.id === id); if (o) { orderDraft = JSON.parse(JSON.stringify(o)); orderDraft._new = false; renderOrderForm(); window.scrollTo(0, 0); } }
+function deleteOrder(id) { if (!confirm('Xóa đơn ' + id + '?')) return; loadOrders(); orders = orders.filter(x => x.id !== id); persistOrders(); renderOrders(); }
+
+function renderOrders() {
+  loadOrders(); fillQuoteDropdown();
+  let st = document.getElementById('orderStats');
+  if (st) {
+    let counts = {}; ORDER_STATUS.forEach(s => counts[s.k] = 0);
+    orders.forEach(o => { counts[o.status] = (counts[o.status] || 0) + 1; });
+    let openVal = orders.filter(o => o.status !== 'hoan_thanh' && o.status !== 'huy').reduce((s, o) => s + orderTotal(o), 0);
+    st.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+      ORDER_STATUS.map(s => '<span style="padding:4px 10px;border-radius:12px;background:' + s.color + ';color:#fff;font-size:13px;">' + s.label + ': ' + counts[s.k] + '</span>').join('') +
+      '</div><p style="margin-top:6px;font-size:13px;">Tổng ' + orders.length + ' đơn · Giá trị đơn đang mở: <strong>' + formatPrice(openVal) + '</strong></p>';
+  }
+  let kw = normalizeVN((document.getElementById('orderSearch') || {}).value || '');
+  let fil = (document.getElementById('orderStatusFilter') || {}).value || '';
+  let list = orders.filter(o => (!fil || o.status === fil) && (!kw || normalizeVN(o.id + ' ' + (o.customer || '') + ' ' + (o.phone || '')).includes(kw)));
+  let box = document.getElementById('ordersList'); if (!box) return;
+  if (list.length === 0) { box.innerHTML = '<p style="color:#999;">Chưa có đơn nào khớp. Bấm "Tạo đơn mới" hoặc tạo từ báo giá đã lưu.</p>'; return; }
+  box.innerHTML = list.map(o => {
+    let m = statusMeta(o.status);
+    return '<div class="card" style="border-left:5px solid ' + m.color + ';">' +
+      '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">' +
+        '<div><strong>' + escapeHtml(o.id) + '</strong> · ' + escapeHtml(o.customer || '(chưa có khách)') + ' ' + (o.phone ? '· ' + escapeHtml(o.phone) : '') + '<br>' +
+        '<small>' + escapeHtml(o.date) + ' · ' + (o.items ? o.items.length : 0) + ' mặt hàng · Tổng ' + formatPrice(orderTotal(o)) + (o.supplier ? ' · NCC: ' + escapeHtml(o.supplier) : '') + (o.eta ? ' · Giao: ' + escapeHtml(o.eta) : '') + '</small></div>' +
+        '<div><span style="padding:3px 10px;border-radius:12px;background:' + m.color + ';color:#fff;font-size:12px;">' + m.label + '</span></div>' +
+      '</div>' +
+      (o.note ? '<small style="color:#666;">📝 ' + escapeHtml(o.note) + '</small><br>' : '') +
+      '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
+        'Trạng thái: <select onchange="setOrderStatus(\'' + o.id + '\',this.value)" style="padding:4px;">' +
+          ORDER_STATUS.map(s => '<option value="' + s.k + '"' + (s.k === o.status ? ' selected' : '') + '>' + s.label + '</option>').join('') + '</select>' +
+        '<button onclick="editOrder(\'' + o.id + '\')">✏️ Sửa</button>' +
+        '<button onclick="deleteOrder(\'' + o.id + '\')" style="background:#c0392b;">🗑️ Xóa</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function exportOrders() {
+  loadOrders();
+  if (orders.length === 0) { alert('Chưa có đơn để xuất.'); return; }
+  let rows = [['Ma_don', 'Ngay', 'Khach', 'SDT', 'Dia_chi', 'So_mat_hang', 'Tong_tien', 'Trang_thai', 'NCC', 'Nha_xe', 'Ngay_giao', 'Ghi_chu']];
+  orders.forEach(o => rows.push([o.id, o.date, o.customer, o.phone, o.address, (o.items || []).length, orderTotal(o), statusMeta(o.status).label.replace(/^\S+\s/, ''), o.supplier, o.ship, o.eta, o.note]));
+  let csv = rows.map(r => r.map(x => { let s = String(x == null ? '' : x); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(',')).join('\r\n');
+  let d = new Date(); let fn = 'DonHang_' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '.csv';
+  let blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fn; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  alert('✅ Đã xuất ' + orders.length + ' đơn ra ' + fn);
 }
 
 function formatPrice(n) {
