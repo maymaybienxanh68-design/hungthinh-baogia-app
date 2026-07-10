@@ -193,6 +193,12 @@ input[type="number"] { width: 80px; }
       </div>
 
       <div class="card">
+        <h2>⬆️ Nhập nhanh giá NCC <span style="font-size:12px;color:#999;font-weight:normal;">(chỉ Chủ)</span></h2>
+        <p style="color:#666;font-size:13px;margin-bottom:10px;">Thả FILE Excel báo giá của 1 NCC (hoặc dán bảng copy từ Excel) → app tự khớp mã &amp; thêm giá vào bảng so sánh. Lưu trong máy này (localStorage).</p>
+        <div id="nccImportBox"></div>
+      </div>
+
+      <div class="card">
         <h2>🔧 Tra cứu tương thích theo máy</h2>
         <div class="form-group">
           <label>Chọn loại máy:</label>
@@ -272,6 +278,7 @@ input[type="number"] { width: 80px; }
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // Dữ liệu sản phẩm THẬT nạp từ DATA_SANPHAM.csv (1148 sản phẩm) + DATA_ALIAS.csv
 // Lưu ý: sản phẩm trùng tên nhưng khác mã (nhiều NCC, giá khác nhau) được giữ
@@ -1616,6 +1623,7 @@ let quoteData = { no: "", date: "", customer: "", address: "", phone: "", items:
 let savedQuotes = [];
 
 window.onload = function() {
+  loadNccExtra();
   loadSavedQuotes();
   document.getElementById('quoteDate').valueAsDate = new Date();
   let sel = document.getElementById('machineSelect');
@@ -1662,7 +1670,7 @@ function switchTab(tabIdx) {
   event.target.classList.add('active');
 
   if (tabIdx === 2) loadSavedQuotes();
-  if (tabIdx === 3) { renderMachineCompat(); calcLandedCost(); renderLowStock(); renderMergeReview(); renderSupplierCompare(); renderSupSearch(); }
+  if (tabIdx === 3) { renderMachineCompat(); calcLandedCost(); renderLowStock(); renderMergeReview(); renderSupplierCompare(); renderSupSearch(); renderNccImport(); }
   if (tabIdx === 4) renderOrders();
 }
 
@@ -2369,6 +2377,151 @@ function exportOrders() {
   let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fn; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   alert('✅ Đã xuất ' + orders.length + ' đơn ra ' + fn);
+}
+
+// ===== NHẬP NHANH GIÁ NCC =====
+let nccExtra = [];
+let _nameIdx = null;
+
+function loadNccExtra() {
+  try { nccExtra = JSON.parse(localStorage.getItem('nccExtra') || '[]'); } catch (e) { nccExtra = []; }
+  appData.ncc = appData.ncc.filter(x => !x._imported).concat(nccExtra.map(e => Object.assign({}, e, { _imported: true })));
+}
+function saveNccExtra() { localStorage.setItem('nccExtra', JSON.stringify(nccExtra)); loadNccExtra(); }
+
+function nccNameIndex() {
+  if (_nameIdx) return _nameIdx;
+  _nameIdx = {};
+  appData.s.forEach(p => {
+    let k = normalizeVN(p.n); if (k && !(k in _nameIdx)) _nameIdx[k] = p.c;
+    (p.a || []).forEach(a => { let ka = normalizeVN(a); if (ka && !(ka in _nameIdx)) _nameIdx[ka] = p.c; });
+  });
+  return _nameIdx;
+}
+function nccMatchCode(name, code) {
+  let idx = nccNameIndex();
+  let m = idx[normalizeVN(name)];
+  if (!m && code) m = idx[normalizeVN(code)];
+  return m || null;
+}
+function nccToNum(v) {
+  if (typeof v === 'number') return v;
+  let s = String(v == null ? '' : v).replace(/[^0-9]/g, '');
+  return s ? parseInt(s, 10) : NaN;
+}
+function nccParseAoa(aoa) {
+  let hi = -1, cN = -1, cP = -1, cC = -1;
+  for (let i = 0; i < Math.min(aoa.length, 15); i++) {
+    let row = aoa[i] || []; let joined = row.map(x => normalizeVN(x)).join(' ');
+    if (/don gia|gia/.test(joined) && /ten hang|dien giai|ten|hang/.test(joined)) {
+      hi = i;
+      row.forEach((h, j) => { let hn = normalizeVN(h);
+        if (cN < 0 && /ten hang|dien giai|ten|hang/.test(hn)) cN = j;
+        if (cP < 0 && /don gia|gia/.test(hn)) cP = j;
+        if (cC < 0 && /ma hang|ma ncc|^ma$/.test(hn)) cC = j; });
+      break;
+    }
+  }
+  let out = [];
+  if (hi >= 0 && cN >= 0 && cP >= 0) {
+    for (let i = hi + 1; i < aoa.length; i++) {
+      let r = aoa[i] || []; let name = r[cN], price = nccToNum(r[cP]);
+      if (typeof name !== 'string' || !name.trim() || !(price > 0)) continue;
+      let nn = normalizeVN(name); if (nn.indexOf('tong') === 0 || nn === 'cong') continue;
+      out.push({ name: name.trim(), price: price, code: (cC >= 0 && r[cC] != null) ? String(r[cC]).trim() : '' });
+    }
+  } else {
+    aoa.forEach(r => {
+      if (!Array.isArray(r)) return; let name = '', price = NaN;
+      r.forEach(v => { if (typeof v === 'string' && v.trim().length > name.length) name = v.trim(); if (typeof v === 'number' && v > 0) price = v; else { let n = nccToNum(v); if (typeof v === 'string' && /[0-9]/.test(v) && n > 0 && isNaN(price)) price = n; } });
+      if (name && price > 0) out.push({ name: name, price: price, code: '' });
+    });
+  }
+  return out;
+}
+function nccDoImport(rows, ncc, ngay) {
+  let matched = 0, unmatched = [];
+  rows.forEach(r => {
+    let code = nccMatchCode(r.name, r.code);
+    if (code) {
+      nccExtra = nccExtra.filter(e => !(e.c === code && e.ncc === ncc && normalizeVN(e.ten_goi) === normalizeVN(r.name)));
+      nccExtra.push({ c: code, ncc: ncc, ten_goi: r.name, sku: r.code || '', gia: r.price, hoadon: false, ngay: ngay });
+      matched++;
+    } else unmatched.push(r.name + ' (' + formatPrice(r.price) + ')');
+  });
+  saveNccExtra();
+  let div = document.getElementById('nccImpResult');
+  if (div) {
+    let html = '<div style="margin-top:10px;padding:10px;background:#f4fff4;border:1px solid #cfe9cf;border-radius:6px;">' +
+      '✅ Đã thêm <strong>' + matched + '</strong> giá cho NCC <strong>' + escapeHtml(ncc) + '</strong>.';
+    if (unmatched.length) html += '<br>⚠️ <strong>' + unmatched.length + '</strong> dòng CHƯA khớp mã trong danh mục (bỏ qua): <span style="color:#c0392b;font-size:12px;">' + escapeHtml(unmatched.slice(0, 30).join('; ')) + (unmatched.length > 30 ? '...' : '') + '</span><br><small>Các dòng này là mặt hàng chưa có trong danh mục — gửi file cho bộ phận kỹ thuật để thêm mã chuẩn.</small>';
+    html += '</div>';
+    div.innerHTML = html;
+  }
+  nccImpSummary();
+  if (typeof renderSupplierCompare === 'function') renderSupplierCompare();
+}
+function importNccFile() {
+  let ncc = (document.getElementById('nccImpName').value || '').trim();
+  if (!ncc) { alert('❌ Nhập TÊN nhà cung cấp trước.'); return; }
+  let ngay = document.getElementById('nccImpDate').value || new Date().toISOString().slice(0, 10);
+  let f = document.getElementById('nccImpFile').files[0];
+  if (!f) { alert('❌ Chọn file Excel trước (hoặc dùng ô Dán bên dưới).'); return; }
+  if (typeof XLSX === 'undefined') { alert('❌ Chưa tải được thư viện đọc Excel (cần mạng). Hãy dùng ô "Dán bảng" bên dưới.'); return; }
+  let reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      let wb = XLSX.read(e.target.result, { type: 'array' });
+      let all = [];
+      wb.SheetNames.forEach(sn => { all = all.concat(nccParseAoa(XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1 }))); });
+      if (all.length === 0) { alert('❌ Không đọc được dòng giá nào từ file. Kiểm tra file có cột Tên hàng + Đơn giá.'); return; }
+      nccDoImport(all, ncc, ngay);
+    } catch (err) { alert('❌ Lỗi đọc file: ' + err.message); }
+  };
+  reader.readAsArrayBuffer(f);
+}
+function importNccPaste() {
+  let ncc = (document.getElementById('nccImpName').value || '').trim();
+  if (!ncc) { alert('❌ Nhập TÊN nhà cung cấp trước.'); return; }
+  let ngay = document.getElementById('nccImpDate').value || new Date().toISOString().slice(0, 10);
+  let txt = document.getElementById('nccImpPaste').value || '';
+  if (!txt.trim()) { alert('❌ Dán bảng giá vào ô trước.'); return; }
+  let aoa = txt.split(/\r?\n/).filter(l => l.trim()).map(l => l.split(/\t|;|,| {2,}/));
+  let rows = nccParseAoa(aoa);
+  if (rows.length === 0) { alert('❌ Không nhận ra dòng giá nào. Mỗi dòng cần: Tên hàng [tab] Giá.'); return; }
+  nccDoImport(rows, ncc, ngay);
+}
+function nccImpSummary() {
+  let d = document.getElementById('nccImpStored'); if (!d) return;
+  if (nccExtra.length === 0) { d.innerHTML = '<p style="color:#999;font-size:13px;">Chưa có giá NCC nào nhập thêm.</p>'; return; }
+  let bySup = {}; nccExtra.forEach(e => { bySup[e.ncc] = (bySup[e.ncc] || 0) + 1; });
+  d.innerHTML = '<p style="font-size:13px;margin-top:8px;">📦 Đã nhập thêm <strong>' + nccExtra.length + '</strong> giá NCC: ' +
+    Object.entries(bySup).map(([k, v]) => escapeHtml(k) + ' (' + v + ')').join(', ') +
+    ' <button onclick="clearNccExtra()" style="background:#c0392b;padding:3px 8px;margin-left:6px;">🗑️ Xóa hết</button></p>';
+}
+function clearNccExtra() {
+  if (!confirm('Xóa toàn bộ giá NCC đã nhập thêm trong máy này?')) return;
+  nccExtra = []; saveNccExtra(); nccImpSummary();
+  let div = document.getElementById('nccImpResult'); if (div) div.innerHTML = '';
+  if (typeof renderSupplierCompare === 'function') renderSupplierCompare();
+}
+function renderNccImport() {
+  let box = document.getElementById('nccImportBox'); if (!box) return;
+  if (userData.mode !== 'owner') { box.innerHTML = '<p style="color:#999;">🔒 Chỉ Chủ mới dùng được mục này.</p>'; return; }
+  box.innerHTML =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+      '<div class="form-group"><label>Tên nhà cung cấp *</label><input type="text" id="nccImpName" placeholder="vd: Đài Nhật, Thanh Hoa..."></div>' +
+      '<div class="form-group"><label>Ngày báo giá</label><input type="date" id="nccImpDate"></div>' +
+    '</div>' +
+    '<div class="form-group"><label>📂 Chọn file Excel báo giá NCC (.xlsx/.xls/.csv)</label><input type="file" id="nccImpFile" accept=".xlsx,.xls,.csv"></div>' +
+    '<button onclick="importNccFile()">⬆️ Nạp từ file</button>' +
+    '<div class="form-group" style="margin-top:12px;"><label>Hoặc DÁN bảng copy từ Excel (mỗi dòng: Tên hàng [tab] Giá)</label>' +
+      '<textarea id="nccImpPaste" rows="4" style="width:100%;" placeholder="Kim DBx1 14/90\t1500\nDao 8E\t110000"></textarea></div>' +
+    '<button onclick="importNccPaste()">⬆️ Nạp từ ô dán</button>' +
+    '<div id="nccImpResult"></div>' +
+    '<div id="nccImpStored"></div>';
+  let dd = document.getElementById('nccImpDate'); if (dd && !dd.value) dd.value = new Date().toISOString().slice(0, 10);
+  nccImpSummary();
 }
 
 function formatPrice(n) {
