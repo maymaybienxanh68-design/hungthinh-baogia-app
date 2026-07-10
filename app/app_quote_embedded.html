@@ -66,6 +66,7 @@ input[type="number"] { width: 80px; }
         <button class="tab-btn" onclick="switchTab(2)">📋 Danh sách</button>
         <button class="tab-btn" onclick="switchTab(3)">🔧 Công cụ</button>
         <button class="tab-btn" onclick="switchTab(4)">📦 Đơn hàng</button>
+        <button class="tab-btn" onclick="switchTab(5)">💬 Chăm sóc KH</button>
         <button class="tab-btn secondary" style="float:right;" onclick="doLogout()">Đăng xuất</button>
       </div>
     </div>
@@ -273,6 +274,13 @@ input[type="number"] { width: 80px; }
         </div>
         <div id="orderFormWrap"></div>
         <div id="ordersList"></div>
+      </div>
+    </div>
+    <div id="tab5" class="tab-content">
+      <div class="card">
+        <h2>💬 Chăm sóc khách Zalo</h2>
+        <p style="color:#666;font-size:13px;margin-bottom:10px;">Danh sách khách tự lập từ Đơn hàng &amp; Báo giá đã lưu. Nhắc khách đến kỳ mua lại và soạn sẵn tin nhắn thân thiện để copy dán vào Zalo.</p>
+        <div id="careBox"></div>
       </div>
     </div>
   </div>
@@ -1672,6 +1680,7 @@ function switchTab(tabIdx) {
   if (tabIdx === 2) loadSavedQuotes();
   if (tabIdx === 3) { renderMachineCompat(); calcLandedCost(); renderLowStock(); renderMergeReview(); renderSupplierCompare(); renderSupSearch(); renderNccImport(); }
   if (tabIdx === 4) renderOrders();
+  if (tabIdx === 5) renderCustomerCare();
 }
 
 function renderMachineCompat() {
@@ -2522,6 +2531,119 @@ function renderNccImport() {
     '<div id="nccImpStored"></div>';
   let dd = document.getElementById('nccImpDate'); if (dd && !dd.value) dd.value = new Date().toISOString().slice(0, 10);
   nccImpSummary();
+}
+
+// ===== CHĂM SÓC KHÁCH ZALO =====
+const CARE_TEMPLATES = [
+  { k: 'nhac', label: 'Nhắc mua lại' },
+  { k: 'camon', label: 'Cảm ơn sau mua' },
+  { k: 'uudai', label: 'Mời hàng mới / ưu đãi' },
+  { k: 'hoitham', label: 'Hỏi thăm' }
+];
+let _careList = [];
+
+function careCycle() { return parseInt(localStorage.getItem('careCycle') || '30') || 30; }
+function careContacted() { try { return JSON.parse(localStorage.getItem('careContacted') || '{}'); } catch (e) { return {}; } }
+function setCareContacted(o) { localStorage.setItem('careContacted', JSON.stringify(o)); }
+function careDays(a, b) { return Math.floor((b - a) / 86400000); }
+
+function buildCustomers() {
+  let orders = []; try { orders = JSON.parse(localStorage.getItem('orders') || '[]'); } catch (e) {}
+  let quotes = []; try { quotes = JSON.parse(localStorage.getItem('savedQuotes') || '[]'); } catch (e) {}
+  let map = {};
+  function add(name, phone, dateStr, items, total) {
+    let key = (phone || '').replace(/[^0-9]/g, '') || normalizeVN(name || '');
+    if (!key) return;
+    let c = map[key] || (map[key] = { key: key, name: name || '', phone: phone || '', last: '', count: 0, total: 0, items: {} });
+    if (name && name.length > c.name.length) c.name = name;
+    if (phone && !c.phone) c.phone = phone;
+    if (dateStr && dateStr > c.last) c.last = dateStr;
+    c.count++; c.total += total || 0;
+    (items || []).forEach(it => { if (it.name) c.items[it.name] = (c.items[it.name] || 0) + 1; });
+  }
+  orders.forEach(o => add(o.customer, o.phone, o.date, o.items, (o.items || []).reduce((s, it) => s + it.qty * it.price, 0)));
+  quotes.forEach(q => add(q.customer, q.phone, q.date, q.items, (q.items || []).reduce((s, it) => s + it.qty * it.price, 0)));
+  return Object.keys(map).map(k => {
+    let c = map[k];
+    c.topItems = Object.keys(c.items).sort((a, b) => c.items[b] - c.items[a]).slice(0, 3);
+    return c;
+  });
+}
+
+function careMessage(c, tpl) {
+  let ten = c.name || 'anh/chị';
+  let mon = (c.topItems && c.topItems.length) ? c.topItems[0] : '';
+  let gt = 'Bên em là Hưng Thịnh Smart, chuyên máy và linh kiện ngành may công nghiệp.';
+  if (tpl === 'camon') return 'Dạ em chào anh/chị ' + ten + ' ạ! Em cảm ơn anh/chị đã tin tưởng đặt hàng bên em. ' + gt + ' Trong quá trình dùng có gì cần hỗ trợ anh/chị cứ nhắn em nhé. Chúc anh/chị xưởng luôn chạy đều ạ!';
+  if (tpl === 'uudai') return 'Dạ em chào anh/chị ' + ten + ' ạ! ' + gt + ' Bên em vừa về thêm hàng mới, giá tốt' + (mon ? ' cho ' + mon : '') + '. Anh/chị có cần em gửi báo giá mới nhất để tham khảo không ạ?';
+  if (tpl === 'hoitham') return 'Dạ em chào anh/chị ' + ten + ' ạ! Dạo này xưởng mình chạy ổn không ạ? ' + gt + ' Cần bổ sung kim, dao, chỉ hay linh kiện gì anh/chị nhắn em hỗ trợ ngay nhé!';
+  return 'Dạ em chào anh/chị ' + ten + ' ạ! ' + gt + ' Đợt trước anh/chị có lấy ' + (mon || 'hàng') + ' bên em. Không biết giờ xưởng mình còn cần bổ sung thêm không ạ? Em gửi báo giá mới nhất cho mình nhé. Em cảm ơn anh/chị!';
+}
+
+function copyCareMsg(i) {
+  let c = _careList[i]; if (!c) return;
+  let sel = document.getElementById('care_tpl_' + i);
+  let msg = careMessage(c, sel ? sel.value : 'nhac');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(msg).then(function () {
+      alert('✅ Đã copy tin nhắn cho ' + (c.name || c.phone) + '. Mở Zalo dán gửi nhé!\n\n' + msg);
+    }).catch(function () { prompt('Copy tin nhắn dưới đây:', msg); });
+  } else { prompt('Copy tin nhắn dưới đây:', msg); }
+}
+function markContacted(i) {
+  let c = _careList[i]; if (!c) return;
+  let o = careContacted(); o[c.key] = new Date().toISOString().slice(0, 10); setCareContacted(o); renderCustomerCare();
+}
+
+function renderCustomerCare() {
+  let box = document.getElementById('careBox'); if (!box) return;
+  let cycle = careCycle(); let contacted = careContacted(); let today = new Date();
+  let custs = buildCustomers().map(function (c) {
+    let lastD = c.last ? new Date(c.last) : null;
+    let contD = contacted[c.key] ? new Date(contacted[c.key]) : null;
+    let refD = (contD && (!lastD || contD > lastD)) ? contD : lastD;
+    let days = refD ? careDays(refD, today) : 99999;
+    c.days = days; c.due = refD ? days >= cycle : true; return c;
+  });
+  let due = custs.filter(function (c) { return c.due; }).sort(function (a, b) { return b.days - a.days; });
+  let notDue = custs.filter(function (c) { return !c.due; }).sort(function (a, b) { return b.days - a.days; });
+  _careList = due.concat(notDue);
+  let isOwner = userData.mode === 'owner';
+  let html = '<div class="form-group" style="max-width:260px;"><label>Chu kỳ nhắc mua lại (ngày)</label>' +
+    '<input type="number" id="careCycleInput" value="' + cycle + '" onchange="localStorage.setItem(\'careCycle\',this.value||30);renderCustomerCare();"></div>';
+  html += '<p style="margin:6px 0;">👥 <strong>' + custs.length + '</strong> khách · 🔔 <strong style="color:#c0392b;">' + due.length + '</strong> khách đến kỳ nhắc.</p>';
+  if (custs.length === 0) { box.innerHTML = html + '<p style="color:#999;">Chưa có khách nào. Danh sách tự lập từ Đơn hàng và Báo giá đã lưu (khi có tên/SĐT khách).</p>'; return; }
+  html += '<div style="margin:8px 0;"><button onclick="exportCare()" style="background:#2e7d32;">📤 Xuất danh sách KH (CSV)</button></div>';
+  html += '<h4>🔔 Đến kỳ nhắc mua lại (' + due.length + ')</h4>';
+  html += due.length ? due.map(function (c) { return careCard(c, _careList.indexOf(c), isOwner); }).join('') : '<p style="color:#2e7d32;">Không có khách nào đến kỳ nhắc.</p>';
+  if (notDue.length) html += '<h4 style="margin-top:14px;">Khách khác (' + notDue.length + ')</h4>' + notDue.map(function (c) { return careCard(c, _careList.indexOf(c), isOwner); }).join('');
+  box.innerHTML = html;
+}
+function careCard(c, i, isOwner) {
+  let lastTxt = (c.last && c.days < 99999) ? (c.days + ' ngày trước (' + c.last + ')') : 'chưa rõ';
+  let opts = CARE_TEMPLATES.map(function (t) { return '<option value="' + t.k + '">' + t.label + '</option>'; }).join('');
+  return '<div class="card" style="' + (c.due ? 'border-left:5px solid #c0392b;' : '') + '">' +
+    '<strong>' + escapeHtml(c.name || '(chưa có tên)') + '</strong>' + (c.phone ? ' · ' + escapeHtml(c.phone) : '') +
+    (c.due ? ' <span style="background:#c0392b;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Đến kỳ nhắc</span>' : '') + '<br>' +
+    '<small>Mua gần nhất: ' + lastTxt + ' · ' + c.count + ' lần' + (isOwner ? ' · Tổng: ' + formatPrice(c.total) : '') +
+    (c.topItems.length ? ' · Hay mua: ' + escapeHtml(c.topItems.join(', ')) : '') + '</small>' +
+    '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
+      'Mẫu tin: <select id="care_tpl_' + i + '" style="padding:4px;">' + opts + '</select>' +
+      '<button onclick="copyCareMsg(' + i + ')">📋 Copy tin Zalo</button>' +
+      '<button onclick="markContacted(' + i + ')" style="background:#888;">✓ Đã liên hệ</button>' +
+    '</div></div>';
+}
+function exportCare() {
+  let custs = buildCustomers(); if (custs.length === 0) { alert('Chưa có khách.'); return; }
+  let contacted = careContacted();
+  let rows = [['Ten', 'SDT', 'Mua_gan_nhat', 'So_lan', 'Tong_tien', 'Hay_mua', 'Da_lien_he']];
+  custs.forEach(function (c) { rows.push([c.name, c.phone, c.last, c.count, c.total, c.topItems.join(' | '), contacted[c.key] || '']); });
+  let csv = rows.map(function (r) { return r.map(function (x) { let s = String(x == null ? '' : x); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(','); }).join('\r\n');
+  let d = new Date(); let fn = 'ChamSocKH_' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '.csv';
+  let blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fn; a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  alert('✅ Đã xuất ' + custs.length + ' khách ra ' + fn);
 }
 
 function formatPrice(n) {
