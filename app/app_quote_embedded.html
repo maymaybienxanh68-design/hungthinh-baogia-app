@@ -35,6 +35,20 @@ table th { background: #f5f5f5; font-weight: bold; }
 input[type="number"] { width: 80px; }
 .text-right { text-align: right; }
 .total-row { font-weight: bold; background: #f5f5f5; }
+
+/* ===== Phiếu địa chỉ / in ấn ===== */
+#printArea { position: fixed; left: -10000px; top: 0; }
+@media print {
+  body * { visibility: hidden; }
+  #printArea, #printArea * { visibility: visible; }
+  #printArea { position: absolute; left: 0; top: 0; width: 100%; }
+}
+.addr-slip { border: 2px solid #000; border-radius: 6px; padding: 16px; margin: 0 auto 14px auto; max-width: 520px; font-family: Arial, sans-serif; page-break-inside: avoid; }
+.addr-slip .lbl { font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 1px; }
+.addr-slip .r-name { font-size: 20px; font-weight: bold; margin: 2px 0; }
+.addr-slip .r-line { font-size: 15px; margin: 2px 0; }
+.addr-slip .sender { margin-top: 12px; padding-top: 8px; border-top: 1px dashed #888; font-size: 13px; color: #333; }
+.kh-results div:hover { background: #f0f0f0; }
 </style>
 </head>
 <body>
@@ -67,6 +81,7 @@ input[type="number"] { width: 80px; }
         <button class="tab-btn" onclick="switchTab(3)">🔧 Công cụ</button>
         <button class="tab-btn" onclick="switchTab(4)">📦 Đơn hàng</button>
         <button class="tab-btn" onclick="switchTab(5)">💬 Chăm sóc KH</button>
+        <button class="tab-btn" onclick="switchTab(6)">📮 Phiếu gửi</button>
         <button class="tab-btn secondary" style="float:right;" onclick="doLogout()">Đăng xuất</button>
       </div>
     </div>
@@ -104,6 +119,11 @@ input[type="number"] { width: 80px; }
             <label>Ngày:</label>
             <input type="date" id="quoteDate">
           </div>
+        </div>
+        <div class="form-group" style="position:relative;">
+          <label>🔎 Chọn khách có sẵn (bấm tên là tự điền Tên/Địa chỉ/SĐT):</label>
+          <input type="text" id="quoteKhSearch" placeholder="Gõ tên hoặc SĐT khách..." autocomplete="off" oninput="khPickerSearch('quote')">
+          <div id="quoteKhResults" class="kh-results" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid #ccc;width:100%;max-height:240px;overflow:auto;"></div>
         </div>
         <div class="form-group">
           <label>Kính gửi (Tên khách):</label>
@@ -283,9 +303,56 @@ input[type="number"] { width: 80px; }
         <div id="careBox"></div>
       </div>
     </div>
+    <div id="tab6" class="tab-content">
+      <div class="card">
+        <h2>📮 Phiếu địa chỉ (gửi hàng)</h2>
+        <p style="color:#666;font-size:13px;margin-bottom:10px;">Chọn khách để tự điền người nhận. Sửa được người nhận &amp; người gửi. Bấm <strong>In / Lưu PDF</strong> để dán lên kiện hàng. (In → chọn máy in "Save as PDF" để ra file PDF, dùng được offline.)</p>
+        <h3 style="margin:6px 0;">📥 Người nhận</h3>
+        <div class="form-group" style="position:relative;">
+          <label>🔎 Chọn khách:</label>
+          <input type="text" id="addrKhSearch" placeholder="Gõ tên hoặc SĐT khách..." autocomplete="off" oninput="khPickerSearch('addr')">
+          <div id="addrKhResults" class="kh-results" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid #ccc;width:100%;max-height:240px;overflow:auto;"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="form-group"><label>Họ tên người nhận</label><input type="text" id="addr_r_ten"></div>
+          <div class="form-group"><label>SĐT người nhận</label><input type="text" id="addr_r_sdt"></div>
+        </div>
+        <div class="form-group"><label>Địa chỉ người nhận</label><input type="text" id="addr_r_diachi"></div>
+        <h3 style="margin:12px 0 6px;">📤 Người gửi</h3>
+        <div class="form-group">
+          <label>Chọn người gửi</label>
+          <select id="addr_senderSel" onchange="loadSender()" style="padding:6px;width:100%;"></select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="form-group"><label>Họ tên người gửi</label><input type="text" id="addr_s_ten"></div>
+          <div class="form-group"><label>SĐT người gửi</label><input type="text" id="addr_s_sdt"></div>
+        </div>
+        <div class="form-group"><label>Địa chỉ người gửi</label><input type="text" id="addr_s_diachi"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+          <button onclick="saveSender()" style="background:#2e7d32;">💾 Lưu người gửi</button>
+          <button onclick="delSender()" style="background:#c0392b;">🗑️ Xóa người gửi</button>
+        </div>
+        <hr style="margin:10px 0;border:none;border-top:1px solid #eee;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <button onclick="printAddrSlip()">🖨️ In / Lưu PDF</button>
+          <label>Số phiếu (kiện): <input type="number" id="addr_copies" value="1" min="1" style="width:60px;"></label>
+        </div>
+      </div>
+      <div class="card">
+        <h2>👥 Danh sách khách hàng</h2>
+        <p style="color:#666;font-size:13px;margin-bottom:10px;">Nạp hàng loạt từ file Excel (cột: <em>Tên, SĐT, Địa chỉ, Công ty, Ghi chú</em>) hoặc dán bảng. Lưu trong máy (offline). Bấm tên khách ở các ô 🔎 để tự điền.</p>
+        <div class="form-group"><label>📂 Chọn file Excel khách hàng (.xlsx/.xls/.csv)</label><input type="file" id="khImpFile" accept=".xlsx,.xls,.csv"></div>
+        <button onclick="importKhFile()">⬆️ Nạp từ file</button>
+        <div class="form-group" style="margin-top:12px;"><label>Hoặc DÁN bảng (mỗi dòng: Tên [tab] SĐT [tab] Địa chỉ)</label><textarea id="khImpPaste" rows="4" style="width:100%;" placeholder="Xưởng may A	0912345678	Hà Nội"></textarea></div>
+        <button onclick="importKhPaste()">⬆️ Nạp từ ô dán</button>
+        <div id="khImpResult"></div>
+        <div id="khStored"></div>
+      </div>
+    </div>
   </div>
 </div>
 
+<div id="printArea"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // Dữ liệu sản phẩm THẬT nạp từ DATA_SANPHAM.csv (1148 sản phẩm) + DATA_ALIAS.csv
@@ -1611,6 +1678,10 @@ const appData = {
     { c: "MAT-NGUYET-1-KIM-DT-FD20", ncc: "Đông Dương", ten_goi: "MAT NGUYET 1 KIM DT FD20", sku: "", gia: 4800, hoadon: false, ngay: "2026-03-17" },
     { c: "DEN-CAN-DAI-SIPUBA-830B-BONG-L", ncc: "Đông Dương", ten_goi: "DEN CAN DAI SIPUBA 830B BONG LOI", sku: "", gia: 31000, hoadon: false, ngay: "2026-03-17" },
     { c: "MAY-23-KIM-LIEN-TRUC-SI-VC008-23D", ncc: "Đông Dương", ten_goi: "MAY 23 KIM LIEN TRUC SI VC008-23D", sku: "", gia: 14150000, hoadon: false, ngay: "2026-03-17" }
+  ],
+  kh: [
+    { ten: "Xưởng may Anh Tuấn", sdt: "09xxxxxxxx", diachi: "Phú Thọ", congty: "", ghichu: "quen" },
+    { ten: "Cty may Hồng Phát", sdt: "09xxxxxxxx", diachi: "Hà Nội", congty: "", ghichu: "đại lý" }
   ]
 };
 
@@ -1632,6 +1703,8 @@ let savedQuotes = [];
 
 window.onload = function() {
   loadNccExtra();
+  loadKhExtra();
+  initSenders();
   loadSavedQuotes();
   document.getElementById('quoteDate').valueAsDate = new Date();
   let sel = document.getElementById('machineSelect');
@@ -1681,6 +1754,7 @@ function switchTab(tabIdx) {
   if (tabIdx === 3) { renderMachineCompat(); calcLandedCost(); renderLowStock(); renderMergeReview(); renderSupplierCompare(); renderSupSearch(); renderNccImport(); }
   if (tabIdx === 4) renderOrders();
   if (tabIdx === 5) renderCustomerCare();
+  if (tabIdx === 6) renderAddrTab();
 }
 
 function renderMachineCompat() {
@@ -2656,6 +2730,178 @@ function exportCare() {
   let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fn; a.click();
   setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
   alert('✅ Đã xuất ' + custs.length + ' khách ra ' + fn);
+}
+
+// ===== KHÁCH HÀNG + PHIẾU ĐỊA CHỈ =====
+let khExtra = [];
+let _khCache = null;
+let _khSearch = { quote: [], addr: [] };
+
+function loadKhExtra() { try { khExtra = JSON.parse(localStorage.getItem('khExtra') || '[]'); } catch (e) { khExtra = []; } _khCache = null; }
+function saveKhExtra() { localStorage.setItem('khExtra', JSON.stringify(khExtra)); _khCache = null; }
+function khKey(k) { return (k.sdt || '').replace(/[^0-9]/g, '') || normalizeVN(k.ten || ''); }
+function khAll() {
+  if (_khCache) return _khCache;
+  let map = {};
+  (appData.kh || []).concat(khExtra).forEach(k => { let key = khKey(k); if (!key) return; map[key] = Object.assign({}, map[key], k); });
+  _khCache = Object.keys(map).map(x => map[x]).sort((a, b) => (a.ten || '').localeCompare(b.ten || '', 'vi'));
+  return _khCache;
+}
+
+function khPickerSearch(mode) {
+  let inp = document.getElementById(mode === 'quote' ? 'quoteKhSearch' : 'addrKhSearch');
+  let box = document.getElementById(mode === 'quote' ? 'quoteKhResults' : 'addrKhResults');
+  if (!inp || !box) return;
+  let kw = normalizeVN(inp.value.trim());
+  if (!kw) { box.style.display = 'none'; return; }
+  let res = khAll().filter(k => normalizeVN((k.ten || '') + ' ' + (k.sdt || '') + ' ' + (k.congty || '')).includes(kw)).slice(0, 12);
+  _khSearch[mode] = res;
+  if (res.length === 0) { box.innerHTML = '<div style="padding:8px;color:#999;">Không thấy khách. Nạp danh sách ở tab 📮 Phiếu gửi.</div>'; box.style.display = 'block'; return; }
+  box.innerHTML = res.map((k, i) => '<div style="padding:8px;border-bottom:1px solid #eee;cursor:pointer;" onclick="khPick(\'' + mode + '\',' + i + ')"><strong>' + escapeHtml(k.ten || '') + '</strong>' + (k.sdt ? ' · ' + escapeHtml(k.sdt) : '') + (k.diachi ? '<br><small style="color:#666;">' + escapeHtml(k.diachi) + '</small>' : '') + '</div>').join('');
+  box.style.display = 'block';
+}
+function khPick(mode, i) {
+  let k = _khSearch[mode][i]; if (!k) return;
+  if (mode === 'quote') {
+    document.getElementById('customerName').value = k.ten || '';
+    document.getElementById('customerAddress').value = k.diachi || '';
+    document.getElementById('customerPhone').value = k.sdt || '';
+    document.getElementById('quoteKhSearch').value = '';
+    document.getElementById('quoteKhResults').style.display = 'none';
+  } else {
+    document.getElementById('addr_r_ten').value = k.ten || '';
+    document.getElementById('addr_r_sdt').value = k.sdt || '';
+    document.getElementById('addr_r_diachi').value = k.diachi || '';
+    document.getElementById('addrKhSearch').value = '';
+    document.getElementById('addrKhResults').style.display = 'none';
+  }
+}
+
+// ----- Nạp khách từ Excel / dán -----
+function khParseAoa(aoa) {
+  let hi = -1, cT = -1, cP = -1, cD = -1, cC = -1, cG = -1;
+  for (let i = 0; i < Math.min(aoa.length, 15); i++) {
+    let row = aoa[i] || []; let joined = row.map(x => normalizeVN(x)).join(' ');
+    if (/ho ten|ten khach|ten kh|khach hang|^ten| ten/.test(joined) && /(dia chi|dien thoai|sdt|so dt)/.test(joined)) {
+      hi = i;
+      row.forEach((h, j) => { let hn = normalizeVN(h);
+        if (cT < 0 && /ho ten|ten khach|ten kh|khach hang|^ten$|ten/.test(hn)) cT = j;
+        if (cP < 0 && /dien thoai|so dien thoai|sdt|so dt|phone/.test(hn)) cP = j;
+        if (cD < 0 && /dia chi|address/.test(hn)) cD = j;
+        if (cC < 0 && /cong ty|cty|don vi/.test(hn)) cC = j;
+        if (cG < 0 && /ghi chu|note/.test(hn)) cG = j; });
+      break;
+    }
+  }
+  let out = [];
+  if (hi >= 0 && cT >= 0) {
+    for (let i = hi + 1; i < aoa.length; i++) {
+      let r = aoa[i] || []; let ten = r[cT];
+      if (typeof ten !== 'string' || !ten.trim()) continue;
+      out.push({ ten: ten.trim(), sdt: cP >= 0 && r[cP] != null ? String(r[cP]).trim() : '', diachi: cD >= 0 && r[cD] != null ? String(r[cD]).trim() : '', congty: cC >= 0 && r[cC] != null ? String(r[cC]).trim() : '', ghichu: cG >= 0 && r[cG] != null ? String(r[cG]).trim() : '' });
+    }
+  } else {
+    aoa.forEach(r => { if (!Array.isArray(r) || !r[0]) return; let ten = String(r[0]).trim(); if (!ten || /^(ten|ho ten|stt)$/.test(normalizeVN(ten))) return;
+      out.push({ ten: ten, sdt: r[1] != null ? String(r[1]).trim() : '', diachi: r[2] != null ? String(r[2]).trim() : '', congty: r[3] != null ? String(r[3]).trim() : '', ghichu: r[4] != null ? String(r[4]).trim() : '' }); });
+  }
+  return out;
+}
+function khDoImport(rows) {
+  let n = 0;
+  rows.forEach(r => { if (!r.ten) return; let key = khKey(r); khExtra = khExtra.filter(k => khKey(k) !== key); khExtra.push({ ten: r.ten, sdt: r.sdt || '', diachi: r.diachi || '', congty: r.congty || '', ghichu: r.ghichu || '' }); n++; });
+  saveKhExtra();
+  let div = document.getElementById('khImpResult');
+  if (div) div.innerHTML = '<div style="margin-top:10px;padding:10px;background:#f4fff4;border:1px solid #cfe9cf;border-radius:6px;">✅ Đã nạp/cập nhật <strong>' + n + '</strong> khách hàng.</div>';
+  khStoredSummary();
+}
+function importKhFile() {
+  let f = document.getElementById('khImpFile').files[0];
+  if (!f) { alert('❌ Chọn file trước (hoặc dùng ô Dán).'); return; }
+  if (typeof XLSX === 'undefined') { alert('❌ Chưa tải được thư viện đọc Excel (cần mạng). Hãy dùng ô "Dán bảng".'); return; }
+  let reader = new FileReader();
+  reader.onload = function (e) {
+    try { let wb = XLSX.read(e.target.result, { type: 'array' }); let all = [];
+      wb.SheetNames.forEach(sn => { all = all.concat(khParseAoa(XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1 }))); });
+      if (all.length === 0) { alert('❌ Không đọc được khách nào. Cần cột Tên + (SĐT/Địa chỉ).'); return; }
+      khDoImport(all);
+    } catch (err) { alert('❌ Lỗi đọc file: ' + err.message); }
+  };
+  reader.readAsArrayBuffer(f);
+}
+function importKhPaste() {
+  let txt = document.getElementById('khImpPaste').value || '';
+  if (!txt.trim()) { alert('❌ Dán danh sách vào ô trước.'); return; }
+  let aoa = txt.split(/\r?\n/).filter(l => l.trim()).map(l => l.split(/\t|;| {2,}/));
+  let rows = khParseAoa(aoa);
+  if (rows.length === 0) { alert('❌ Không nhận ra khách nào. Mỗi dòng: Tên [tab] SĐT [tab] Địa chỉ.'); return; }
+  khDoImport(rows);
+}
+function khStoredSummary() {
+  let d = document.getElementById('khStored'); if (!d) return;
+  let total = khAll().length;
+  d.innerHTML = '<p style="font-size:13px;margin-top:8px;">📇 Tổng <strong>' + total + '</strong> khách trong danh sách' + (khExtra.length ? ' (' + khExtra.length + ' nạp thêm) <button onclick="clearKhExtra()" style="background:#c0392b;padding:3px 8px;margin-left:6px;">🗑️ Xóa phần nạp thêm</button>' : '') + '.</p>';
+}
+function clearKhExtra() { if (!confirm('Xóa toàn bộ khách đã nạp thêm trong máy này?')) return; khExtra = []; saveKhExtra(); khStoredSummary(); let r = document.getElementById('khImpResult'); if (r) r.innerHTML = ''; }
+
+// ----- Người gửi -----
+function getSenders() { try { return JSON.parse(localStorage.getItem('senders') || '[]'); } catch (e) { return []; } }
+function setSenders(a) { localStorage.setItem('senders', JSON.stringify(a)); }
+function initSenders() { let s = getSenders(); if (!s.length) { s = [{ ten: 'HƯNG THỊNH SMART', sdt: '0982829806', diachi: 'Khu 13, xã Tu Vũ, H. Thanh Thủy, T. Phú Thọ' }]; setSenders(s); } }
+function renderSenderSelect() {
+  let sel = document.getElementById('addr_senderSel'); if (!sel) return;
+  let s = getSenders();
+  sel.innerHTML = s.map((x, i) => '<option value="' + i + '">' + escapeHtml(x.ten || ('Người gửi ' + (i + 1))) + '</option>').join('') + '<option value="new">+ Thêm người gửi mới</option>';
+  if (s.length) loadSender();
+}
+function loadSender() {
+  let sel = document.getElementById('addr_senderSel'); let v = sel ? sel.value : '';
+  if (v === 'new') { document.getElementById('addr_s_ten').value = ''; document.getElementById('addr_s_sdt').value = ''; document.getElementById('addr_s_diachi').value = ''; return; }
+  let s = getSenders()[parseInt(v)]; if (!s) return;
+  document.getElementById('addr_s_ten').value = s.ten || '';
+  document.getElementById('addr_s_sdt').value = s.sdt || '';
+  document.getElementById('addr_s_diachi').value = s.diachi || '';
+}
+function saveSender() {
+  let obj = { ten: document.getElementById('addr_s_ten').value.trim(), sdt: document.getElementById('addr_s_sdt').value.trim(), diachi: document.getElementById('addr_s_diachi').value.trim() };
+  if (!obj.ten) { alert('❌ Nhập họ tên người gửi trước.'); return; }
+  let s = getSenders(); let idx = s.findIndex(x => x.ten === obj.ten);
+  if (idx >= 0) s[idx] = obj; else s.push(obj);
+  setSenders(s); renderSenderSelect();
+  let sel = document.getElementById('addr_senderSel'); let ni = getSenders().findIndex(x => x.ten === obj.ten); if (ni >= 0) { sel.value = ni; loadSender(); }
+  alert('✅ Đã lưu người gửi: ' + obj.ten);
+}
+function delSender() {
+  let sel = document.getElementById('addr_senderSel'); let v = sel ? sel.value : '';
+  if (v === 'new' || v === '') return;
+  let s = getSenders(); let i = parseInt(v);
+  if (!confirm('Xóa người gửi "' + (s[i] ? s[i].ten : '') + '"?')) return;
+  s.splice(i, 1); setSenders(s); renderSenderSelect();
+}
+
+function renderAddrTab() { renderSenderSelect(); khStoredSummary(); }
+
+function printAddrSlip() {
+  let rTen = document.getElementById('addr_r_ten').value.trim();
+  let rSdt = document.getElementById('addr_r_sdt').value.trim();
+  let rDc = document.getElementById('addr_r_diachi').value.trim();
+  let sTen = document.getElementById('addr_s_ten').value.trim();
+  let sSdt = document.getElementById('addr_s_sdt').value.trim();
+  let sDc = document.getElementById('addr_s_diachi').value.trim();
+  if (!rTen && !rSdt && !rDc) { alert('❌ Chưa có thông tin người nhận.'); return; }
+  let copies = parseInt(document.getElementById('addr_copies').value) || 1;
+  let one = '<div class="addr-slip">' +
+    '<div class="lbl">Người nhận</div>' +
+    '<div class="r-name">' + escapeHtml(rTen) + '</div>' +
+    '<div class="r-line">📞 ' + escapeHtml(rSdt) + '</div>' +
+    '<div class="r-line">📍 ' + escapeHtml(rDc) + '</div>' +
+    '<div class="sender"><div class="lbl">Người gửi</div>' +
+    '<div><strong>' + escapeHtml(sTen) + '</strong>' + (sSdt ? ' · ' + escapeHtml(sSdt) : '') + '</div>' +
+    '<div>' + escapeHtml(sDc) + '</div></div></div>';
+  let all = '';
+  for (let i = 0; i < copies; i++) all += one;
+  let pa = document.getElementById('printArea');
+  pa.innerHTML = all;
+  window.print();
 }
 
 function formatPrice(n) {
