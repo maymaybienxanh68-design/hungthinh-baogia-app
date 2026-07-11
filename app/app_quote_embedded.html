@@ -2536,9 +2536,15 @@ function renderNccImport() {
 // ===== CHĂM SÓC KHÁCH ZALO =====
 const CARE_TEMPLATES = [
   { k: 'nhac', label: 'Nhắc mua lại' },
+  { k: 'chao', label: 'Chào / kết nối' },
+  { k: 'baogia', label: 'Gửi báo giá' },
   { k: 'camon', label: 'Cảm ơn sau mua' },
-  { k: 'uudai', label: 'Mời hàng mới / ưu đãi' },
-  { k: 'hoitham', label: 'Hỏi thăm' }
+  { k: 'hoitham', label: 'Hỏi thăm / hàng mới' },
+  { k: 'uudai', label: 'Mời ưu đãi' },
+  { k: 'chotdon', label: 'Xác nhận / chốt đơn' },
+  { k: 'xindiachi', label: 'Xin địa chỉ giao' },
+  { k: 'dagui', label: 'Báo đã gửi hàng' },
+  { k: 'xinloi', label: 'Xin lỗi khi chậm/lỗi' }
 ];
 let _careList = [];
 
@@ -2574,10 +2580,16 @@ function careMessage(c, tpl) {
   let ten = c.name || 'anh/chị';
   let mon = (c.topItems && c.topItems.length) ? c.topItems[0] : '';
   let gt = 'Bên em là Hưng Thịnh Smart, chuyên máy và linh kiện ngành may công nghiệp.';
-  if (tpl === 'camon') return 'Dạ em chào anh/chị ' + ten + ' ạ! Em cảm ơn anh/chị đã tin tưởng đặt hàng bên em. ' + gt + ' Trong quá trình dùng có gì cần hỗ trợ anh/chị cứ nhắn em nhé. Chúc anh/chị xưởng luôn chạy đều ạ!';
-  if (tpl === 'uudai') return 'Dạ em chào anh/chị ' + ten + ' ạ! ' + gt + ' Bên em vừa về thêm hàng mới, giá tốt' + (mon ? ' cho ' + mon : '') + '. Anh/chị có cần em gửi báo giá mới nhất để tham khảo không ạ?';
-  if (tpl === 'hoitham') return 'Dạ em chào anh/chị ' + ten + ' ạ! Dạo này xưởng mình chạy ổn không ạ? ' + gt + ' Cần bổ sung kim, dao, chỉ hay linh kiện gì anh/chị nhắn em hỗ trợ ngay nhé!';
-  return 'Dạ em chào anh/chị ' + ten + ' ạ! ' + gt + ' Đợt trước anh/chị có lấy ' + (mon || 'hàng') + ' bên em. Không biết giờ xưởng mình còn cần bổ sung thêm không ạ? Em gửi báo giá mới nhất cho mình nhé. Em cảm ơn anh/chị!';
+  if (tpl === 'chao') return 'Dạ em chào anh/chị ' + ten + ' ạ! ' + gt + ' Anh/chị cần mặt hàng gì (kim, dao, chỉ, chân vịt, động cơ, bo mạch...) em gửi báo giá và tư vấn ngay cho mình ạ.';
+  if (tpl === 'baogia') return 'Dạ em gửi anh/chị ' + ten + ' báo giá ' + (mon || '[mặt hàng]') + ' ạ. Giá đã gồm VAT, hàng có sẵn. Anh/chị xem giúp em, cần số lượng bao nhiêu em lên đơn luôn cho mình ạ. Em cảm ơn anh/chị!';
+  if (tpl === 'camon') return 'Dạ em cảm ơn anh/chị ' + ten + ' đã tin tưởng đặt hàng bên em ạ! Hàng dùng có gì cần hỗ trợ anh/chị cứ nhắn em nhé. Chúc anh/chị xưởng luôn chạy đều ạ!';
+  if (tpl === 'hoitham') return 'Dạ em chào anh/chị ' + ten + ' ạ! Dạo này xưởng mình chạy ổn không ạ? Bên em vừa về thêm ' + (mon || 'hàng mới') + ' giá tốt, anh/chị cần em gửi báo giá tham khảo không ạ?';
+  if (tpl === 'uudai') return 'Dạ em chào anh/chị ' + ten + ' ạ! Đợt này bên em có ưu đãi giá tốt cho ' + (mon || '[mặt hàng]') + '. Anh/chị lấy nhiều em để giá tốt hơn cho mình ạ. Cần em gửi báo giá không ạ?';
+  if (tpl === 'chotdon') return 'Dạ em xác nhận đơn của anh/chị ' + ten + ' ạ: ' + (mon || '[mặt hàng]') + ' x [số lượng], tổng [số tiền]. Anh/chị cho em xin địa chỉ + số điện thoại người nhận để em gửi hàng nhé ạ.';
+  if (tpl === 'xindiachi') return 'Dạ anh/chị ' + ten + ' gửi em tên người nhận - số điện thoại - địa chỉ để em chuẩn bị gửi hàng ạ. Mình lấy hàng đi đường thường hay gửi nhanh ạ?';
+  if (tpl === 'dagui') return 'Dạ em đã gửi hàng cho anh/chị ' + ten + ' rồi ạ ([nha xe / ma van don]). Anh/chị để ý điện thoại nhận hàng giúp em nhé. Có gì cần hỗ trợ anh/chị nhắn em ạ!';
+  if (tpl === 'xinloi') return 'Dạ em xin lỗi anh/chị ' + ten + ' về việc [hàng chậm/chưa đúng] ạ. Em đang kiểm tra và xử lý ngay cho mình. Em sẽ báo lại anh/chị sớm nhất ạ, mong anh/chị thông cảm giúp em.';
+  return 'Dạ em chào anh/chị ' + ten + ' ạ! Đợt trước anh/chị có lấy ' + (mon || 'hàng') + ' bên em. Không biết giờ xưởng mình còn cần bổ sung thêm không ạ? Em gửi báo giá mới nhất cho mình nhé. Em cảm ơn anh/chị ạ!';
 }
 
 function copyCareMsg(i) {
