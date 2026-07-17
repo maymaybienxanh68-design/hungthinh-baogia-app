@@ -226,6 +226,15 @@ def export_quote(data_json_str):
         else:
             print(f"  ✅ Row {row}: {item['name']}")
 
+    # Ẩn các dòng sản phẩm TRỐNG (STT chưa dùng) để báo giá không còn ô trống.
+    # Chỉ ẩn (không xóa) nên công thức tổng và ảnh vẫn nguyên; dòng ẩn không in ra PDF.
+    n_items = min(len(data['items']), 8)
+    for r in range(15 + n_items, 23):
+        try:
+            wb.set_row_hidden(r)
+        except Exception:
+            pass
+
     # Ghi cache giá trị cho dòng "Cộng tiền hàng" (I23 = SUM), VAT (I24, mặc định 0)
     # và "TỔNG CỘNG THANH TOÁN" (I25 = I23+I24) để hiện số ngay, không bị trống
     vat_amount = 0

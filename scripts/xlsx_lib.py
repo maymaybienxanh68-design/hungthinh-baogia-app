@@ -174,6 +174,20 @@ class XlsxQuote:
         self._write(self.sheet_path,
                     re.sub(r'<row r="%d"[^>]*>' % int(row), repl, s, count=1))
 
+    def set_row_hidden(self, row):
+        """Ẩn dòng (hidden="1") — dòng ẩn KHÔNG hiển thị khi in / xuất PDF.
+        Dùng để giấu các dòng sản phẩm trống trong bảng báo giá."""
+        s = self._read(self.sheet_path)
+        def repl(m):
+            tag = m.group(0)
+            if 'hidden=' in tag:
+                return re.sub(r'hidden="[^"]*"', 'hidden="1"', tag)
+            if tag.endswith('/>'):
+                return tag[:-2] + ' hidden="1"/>'
+            return tag[:-1] + ' hidden="1">'
+        self._write(self.sheet_path,
+                    re.sub(r'<row r="%d"[^>]*?/?>' % int(row), repl, s, count=1))
+
     # ---------- styles (number format / shrink-to-fit) ----------
     def _styles(self):
         return self._read("xl/styles.xml")
@@ -405,18 +419,13 @@ class XlsxQuote:
                     z.write(n, n)
         finally:
             os.chdir(cwd)
-        with open(tmp_zip, "rb") as fi, open(out_path, "wb") as fo:
-            fo.write(fi.read())
-        os.remove(tmp_zip)
-        return out_path
+        # copy file nén sang đích (an toàn cho mount Cowork), giữ nguyên mọi media
+        shutil.copyfile(tmp_zip, out_path)
+        try:
+            os.remove(tmp_zip)
+        except Exception:
+            pass
 
     def cleanup(self):
+        """Xóa thư mục tạm giải nén."""
         shutil.rmtree(self.tmp, ignore_errors=True)
-
-
-def to_pdf(xlsx_path, out_dir):
-    """Xuất PDF bằng LibreOffice (headless), nếu server có cài."""
-    subprocess.run(["soffice", "--headless", "--convert-to", "pdf",
-                    "--outdir", out_dir, xlsx_path],
-                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return os.path.join(out_dir, os.path.splitext(os.path.basename(xlsx_path))[0] + ".pdf")
