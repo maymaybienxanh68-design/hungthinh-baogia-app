@@ -3291,10 +3291,17 @@ function printBaoGiaOffline(){
   function _clean(){ try{document.body.removeChild(host);}catch(e){} try{document.body.removeChild(ov);}catch(e){} }
   setTimeout(function(){
     var oh=host.offsetHeight;
-    var opt={margin:[8,8,8,8],filename:'BaoGia_'+d.name+'.pdf',image:{type:'jpeg',quality:0.96},
-      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',width:780,height:oh,windowWidth:780,windowHeight:oh},
-      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['avoid-all','css','legacy']}};
-    html2pdf().set(opt).from(host).save().then(function(){ _clean(); }).catch(function(e){ _clean(); alert('Lỗi tạo PDF: '+(e&&e.message||e)); });
+    var w=html2pdf().from(host).set({image:{type:'jpeg',quality:0.96},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',width:780,height:oh,windowWidth:780,windowHeight:oh},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}});
+    w.toCanvas().then(function(){
+      var c=w.prop.canvas;
+      return w.toPdf().then(function(){
+        var pdf=w.prop.pdf, pageW=210, pageH=297, margin=8, imgW=pageW-2*margin, imgH=c.height*imgW/c.width, contentH=pageH-2*margin, tot=pdf.internal.getNumberOfPages();
+        if(imgH<=contentH){ pdf.addPage(); pdf.addImage(c.toDataURL('image/jpeg',0.96),'JPEG',margin,margin,imgW,imgH); }
+        else{ var pxPerMM=c.width/imgW, sliceH=Math.floor(contentH*pxPerMM), pos=0; while(pos<c.height){ var hh=Math.min(sliceH,c.height-pos); var t=document.createElement('canvas'); t.width=c.width; t.height=hh; t.getContext('2d').drawImage(c,0,pos,c.width,hh,0,0,c.width,hh); pdf.addPage(); pdf.addImage(t.toDataURL('image/jpeg',0.96),'JPEG',margin,margin,imgW,hh/pxPerMM); pos+=hh; } }
+        for(var i=tot;i>=1;i--) pdf.deletePage(i);
+        pdf.save('BaoGia_'+d.name+'.pdf'); _clean();
+      });
+    }).catch(function(e){ _clean(); alert('Lỗi tạo PDF: '+(e&&e.message||e)); });
   }, 250);
 }
 
