@@ -199,16 +199,13 @@ def export_quote(data_json_str):
         wb.set_text(f"D{row}", item.get('description', ''))
         wb.set_text(f"F{row}", item.get('unit', ''))
         wb.set_number(f"G{row}", qty)
-        wb.set_number(f"H{row}", price)
-        # Cột Thành tiền (I) đã có sẵn công thức =G*H trong mẫu; ghi cache giá trị
-        # để hiện ngay số tiền kể cả khi phần mềm xem không tự tính lại công thức
-        wb.set_formula_cache(f"I{row}", qty * price)
+        # Cột tiền ghi dạng TEXT có sẵn dấu CHẤM ngăn cách nghìn (vd 10.000) -> đúng
+        # trên MỌI máy. (Excel dùng dấu phân cách theo Windows nên format số dễ ra dấu phẩy.)
+        wb.set_text(f"H{row}", format_vn_money(price))
+        wb.set_text(f"I{row}", format_vn_money(qty * price))
 
         # Tự động xuống dòng + tự co giãn chiều cao theo nội dung (tên/mô tả dài)
         wb.set_row_autoheight(row)
-        # Cột tiền: luôn hiện dấu CHẤM ngăn cách hàng nghìn, không phụ thuộc máy/locale
-        wb.set_number_format(f"H{row}", "[$-42A]#,##0")
-        wb.set_number_format(f"I{row}", "[$-42A]#,##0")
 
         # Xử lý ảnh
         image_url = item.get('image', '')
@@ -256,29 +253,25 @@ def export_quote(data_json_str):
             wb.set_col_width('C', round(_C_W + _freed, 4))
         except Exception:
             pass
-        for _c in ('D39', 'D40', 'D41'):
-            try:
-                wb.set_shrink_to_fit(_c)
-            except Exception:
-                pass
+        # (Bỏ co chữ thông tin ngân hàng -> giữ nguyên cỡ chữ 10, căn trái, dễ đọc)
+
+    # Dòng "Chủ tài khoản" (D40) bật wrap trong mẫu -> cho dòng tự cao để tên công ty
+    # dài xuống dòng đủ, không bị cắt (giữ cỡ chữ 10, căn trái).
+    try:
+        wb.set_row_autoheight(40)
+    except Exception:
+        pass
 
     # Ghi cache giá trị cho dòng "Cộng tiền hàng" (I23 = SUM), VAT (I24, mặc định 0)
     # và "TỔNG CỘNG THANH TOÁN" (I25 = I23+I24) để hiện số ngay, không bị trống
     vat_amount = 0
     grand_total = total_amount + vat_amount
     try:
-        wb.set_formula_cache("I23", total_amount)
-        wb.set_number("I24", vat_amount)
-        wb.set_formula_cache("I25", grand_total)
+        wb.set_text("I23", format_vn_money(total_amount))   # Cộng tiền hàng - text dấu chấm
+        wb.set_number("I24", vat_amount)                     # VAT (%) giữ nguyên
+        wb.set_text("I25", format_vn_money(grand_total))    # Tổng cộng - text dấu chấm
     except Exception as e:
-        print(f"⚠️  Lỗi ghi cache tổng cộng: {e}", file=sys.stderr)
-
-    # Định dạng dấu chấm cho các dòng tổng cộng (Cộng tiền hàng / VAT / Tổng cộng)
-    for cell in ("I23", "I24", "I25"):
-        try:
-            wb.set_number_format(cell, "[$-42A]#,##0")
-        except Exception:
-            pass
+        print(f"⚠️  Lỗi ghi tổng cộng: {e}", file=sys.stderr)
 
     # Số tiền bằng chữ - điền đầy đủ, hiện trên 1 hàng ngang (không xuống dòng, tự co chữ nếu dài)
     bang_chu = so_tien_bang_chu(total_amount)
