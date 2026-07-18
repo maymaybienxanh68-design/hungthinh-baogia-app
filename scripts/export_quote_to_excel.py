@@ -255,13 +255,6 @@ def export_quote(data_json_str):
             pass
         # (Bỏ co chữ thông tin ngân hàng -> giữ nguyên cỡ chữ 10, căn trái, dễ đọc)
 
-    # Dòng "Chủ tài khoản" (D40) bật wrap trong mẫu -> cho dòng tự cao để tên công ty
-    # dài xuống dòng đủ, không bị cắt (giữ cỡ chữ 10, căn trái).
-    try:
-        wb.set_row_autoheight(40)
-    except Exception:
-        pass
-
     # Ghi cache giá trị cho dòng "Cộng tiền hàng" (I23 = SUM), VAT (I24, mặc định 0)
     # và "TỔNG CỘNG THANH TOÁN" (I25 = I23+I24) để hiện số ngay, không bị trống
     vat_amount = 0
