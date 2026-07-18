@@ -133,6 +133,19 @@ class XlsxQuote:
         pat = re.compile(r'(<col min="%d" max="%d"[^>]*?)\s*hidden="1"([^>]*/>)' % (idx, idx))
         self._write(self.sheet_path, pat.sub(r"\1\2", s))
 
+    def hide_col(self, letter):
+        """Ẩn cột (hidden="1") — cột ẩn KHÔNG hiển thị khi in / xuất PDF."""
+        idx = self._col_to_idx(letter)
+        s = self._read(self.sheet_path)
+        def repl(m):
+            tag = m.group(0)
+            if 'hidden=' in tag:
+                return re.sub(r'hidden="[^"]*"', 'hidden="1"', tag)
+            return tag[:-2] + ' hidden="1"/>'
+        # thẻ <col> có thể để min/max ở cuối -> khớp min/max ở BẤT KỲ đâu trong thẻ
+        self._write(self.sheet_path,
+                    re.sub(r'<col\b[^>]*?min="%d"\s+max="%d"[^>]*/>' % (idx, idx), repl, s, count=1))
+
     def set_col_width(self, letter, width):
         idx = self._col_to_idx(letter)
         s = self._read(self.sheet_path)
@@ -146,7 +159,7 @@ class XlsxQuote:
                 tag = tag[:-2] + ' customWidth="1"/>'
             return tag
         self._write(self.sheet_path,
-                    re.sub(r'<col min="%d" max="%d"[^>]*/>' % (idx, idx), repl, s, count=1))
+                    re.sub(r'<col\b[^>]*?min="%d"\s+max="%d"[^>]*/>' % (idx, idx), repl, s, count=1))
 
     def set_row_height(self, row, height):
         s = self._read(self.sheet_path)

@@ -235,6 +235,33 @@ def export_quote(data_json_str):
         except Exception:
             pass
 
+    # Ẩn cột "Mô tả sản phẩm" (D) và "Hình ảnh" (E) nếu KHÔNG mặt hàng nào có nội dung.
+    # Khi ẩn: nới rộng cột "Tên hàng" (C) để GIỮ chiều ngang trang (tiêu đề không bị cắt),
+    # và cho các ô thông tin ngân hàng tự co chữ để vừa khung hẹp hơn.
+    _items8 = data['items'][:8]
+    _C_W = 25.140625      # rộng gốc cột C
+    _freed = 0.0
+    if not any((it.get('description') or '').strip() for it in _items8):
+        try:
+            wb.hide_col('D'); _freed += 23.42578125
+        except Exception:
+            pass
+    if not any((it.get('image') or '').strip() for it in _items8):
+        try:
+            wb.hide_col('E'); _freed += 16.28515625
+        except Exception:
+            pass
+    if _freed:
+        try:
+            wb.set_col_width('C', round(_C_W + _freed, 4))
+        except Exception:
+            pass
+        for _c in ('D39', 'D40', 'D41'):
+            try:
+                wb.set_shrink_to_fit(_c)
+            except Exception:
+                pass
+
     # Ghi cache giá trị cho dòng "Cộng tiền hàng" (I23 = SUM), VAT (I24, mặc định 0)
     # và "TỔNG CỘNG THANH TOÁN" (I25 = I23+I24) để hiện số ngay, không bị trống
     vat_amount = 0
