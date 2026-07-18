@@ -122,7 +122,7 @@ input[type="number"] { width: 80px; }
         </div>
         <div class="form-group" style="position:relative;">
           <label>🔎 Chọn khách có sẵn (bấm tên là tự điền Tên/Địa chỉ/SĐT):</label>
-          <input type="text" id="quoteKhSearch" placeholder="Gõ tên hoặc SĐT khách..." autocomplete="off" oninput="khPickerSearch('quote')">
+          <input type="text" id="quoteKhSearch" placeholder="Gõ tên hoặc SĐT khách..." autocomplete="off" oninput="khPickerSearch('quote')" onfocus="khPickerSearch('quote')" onblur="setTimeout(function(){var b=document.getElementById('quoteKhResults');if(b)b.style.display='none';},250)">
           <div id="quoteKhResults" class="kh-results" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid #ccc;width:100%;max-height:240px;overflow:auto;"></div>
         </div>
         <div class="form-group">
@@ -310,7 +310,7 @@ input[type="number"] { width: 80px; }
         <h3 style="margin:6px 0;">📥 Người nhận</h3>
         <div class="form-group" style="position:relative;">
           <label>🔎 Chọn khách:</label>
-          <input type="text" id="addrKhSearch" placeholder="Gõ tên hoặc SĐT khách..." autocomplete="off" oninput="khPickerSearch('addr')">
+          <input type="text" id="addrKhSearch" placeholder="Gõ tên hoặc SĐT khách..." autocomplete="off" oninput="khPickerSearch('addr')" onfocus="khPickerSearch('addr')" onblur="setTimeout(function(){var b=document.getElementById('addrKhResults');if(b)b.style.display='none';},250)">
           <div id="addrKhResults" class="kh-results" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid #ccc;width:100%;max-height:240px;overflow:auto;"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -2907,8 +2907,8 @@ function khPickerSearch(mode) {
   let box = document.getElementById(mode === 'quote' ? 'quoteKhResults' : 'addrKhResults');
   if (!inp || !box) return;
   let kw = normalizeVN(inp.value.trim());
-  if (!kw) { box.style.display = 'none'; return; }
-  let res = (mode === 'quote' ? khBGAll() : khAll()).filter(k => normalizeVN((k.ten || '') + ' ' + (k.sdt || '') + ' ' + (k.congty || '')).includes(kw)).slice(0, 12);
+  let _list = (mode === 'quote' ? khBGAll() : khAll());
+  let res = kw ? _list.filter(k => normalizeVN((k.ten || '') + ' ' + (k.sdt || '') + ' ' + (k.congty || '')).includes(kw)).slice(0, 12) : _list.slice(0, 15);
   _khSearch[mode] = res;
   if (res.length === 0) { box.innerHTML = '<div style="padding:8px;color:#999;">Không thấy khách. Nạp danh sách ở tab 📮 Phiếu gửi.</div>'; box.style.display = 'block'; return; }
   box.innerHTML = res.map((k, i) => '<div style="padding:8px;border-bottom:1px solid #eee;cursor:pointer;" onclick="khPick(\'' + mode + '\',' + i + ')"><strong>' + escapeHtml(k.ten || '') + '</strong>' + (k.sdt ? ' · ' + escapeHtml(k.sdt) : '') + (k.diachi ? '<br><small style="color:#666;">' + escapeHtml(k.diachi) + '</small>' : '') + '</div>').join('');
