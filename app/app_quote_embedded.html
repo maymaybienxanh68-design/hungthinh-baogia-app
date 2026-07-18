@@ -125,9 +125,10 @@ input[type="number"] { width: 80px; }
           <input type="text" id="quoteKhSearch" placeholder="Gõ tên hoặc SĐT khách..." autocomplete="off" oninput="khPickerSearch('quote')" onfocus="khPickerSearch('quote')" onblur="setTimeout(function(){var b=document.getElementById('quoteKhResults');if(b)b.style.display='none';},250)">
           <div id="quoteKhResults" class="kh-results" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid #ccc;width:100%;max-height:240px;overflow:auto;"></div>
         </div>
-        <div class="form-group">
-          <label>Kính gửi (Tên khách):</label>
-          <input type="text" id="customerName" placeholder="Công ty ABC">
+        <div class="form-group" style="position:relative;">
+          <label>Kính gửi (Tên khách) — gõ tên là tự gợi ý:</label>
+          <input type="text" id="customerName" placeholder="Gõ tên khách, vd: hà nội / giovani..." autocomplete="off" oninput="khNameSearch()" onfocus="khNameSearch()" onblur="setTimeout(function(){var b=document.getElementById('customerNameResults');if(b)b.style.display='none';},250)">
+          <div id="customerNameResults" class="kh-results" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid #ccc;width:100%;max-height:240px;overflow:auto;"></div>
         </div>
         <div class="form-group">
           <label>Địa chỉ:</label>
@@ -2929,6 +2930,26 @@ function khPick(mode, i) {
     document.getElementById('addrKhSearch').value = '';
     document.getElementById('addrKhResults').style.display = 'none';
   }
+}
+
+function khNameSearch() {
+  var inp = document.getElementById('customerName');
+  var box = document.getElementById('customerNameResults');
+  if (!inp || !box) return;
+  var kw = normalizeVN(inp.value.trim());
+  var list = khBGAll();
+  var res = kw ? list.filter(function(k){ return normalizeVN((k.ten||'')+' '+(k.sdt||'')+' '+(k.congty||'')).includes(kw); }).slice(0,15) : list.slice(0,15);
+  _khSearch['qname'] = res;
+  if (res.length === 0) { box.style.display='none'; return; }
+  box.innerHTML = res.map(function(k,i){ return '<div style="padding:8px;border-bottom:1px solid #eee;cursor:pointer;" onmousedown="khNamePick('+i+')"><strong>'+escapeHtml(k.ten||'')+'</strong>'+(k.sdt?' \u00b7 '+escapeHtml(k.sdt):'')+(k.diachi?'<br><small style="color:#666;">'+escapeHtml(k.diachi)+'</small>':'')+'</div>'; }).join('');
+  box.style.display='block';
+}
+function khNamePick(i) {
+  var k = _khSearch['qname'][i]; if (!k) return;
+  document.getElementById('customerName').value = k.ten || '';
+  document.getElementById('customerAddress').value = k.diachi || '';
+  document.getElementById('customerPhone').value = k.sdt || '';
+  document.getElementById('customerNameResults').style.display = 'none';
 }
 
 // ----- Nạp khách từ Excel / dán -----
