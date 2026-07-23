@@ -3275,9 +3275,7 @@ function _bgContentHtml(){
   var head='<th class="c">STT</th><th>Tên hàng hóa dịch vụ</th>'+(hasDesc?'<th>Mô tả sản phẩm</th>':'')
     +'<th class="c">ĐVT</th><th class="c">Số lượng</th><th class="c">Đơn giá (VNĐ)</th><th class="c">Thành tiền (VNĐ)</th><th class="c">Ghi chú</th>';
   var luu=['Đơn giá trên là giá chưa bao gồm thuế GTGT.','Bên bán có trách nhiệm xuất hóa đơn GTGT cho bên mua.',
-    'Giao hàng: Theo thỏa thuận.','Thanh toán: Theo thỏa thuận.','Báo giá có hiệu lực trong vòng 15 ngày kể từ ngày báo giá.',
-    'Chiết khấu đại lý áp dụng riêng cho khách hàng là đại lý phân phối, không áp dụng cho khách lẻ.',
-    'Mức chiết khấu có thể thay đổi tùy theo sản lượng và chính sách từng thời kỳ.']
+    'Giao hàng: Theo thỏa thuận.','Thanh toán: Theo thỏa thuận.','Báo giá có hiệu lực trong vòng 15 ngày kể từ ngày báo giá.']
     .map(function(t,i){return '<div>'+(i+1)+'/ '+t+'</div>';}).join('');
   var nItems=items.length;
   var rowPad = nItems<=1 ? 22 : nItems<=3 ? 16 : nItems<=6 ? 11 : nItems<=9 ? 8 : nItems<=14 ? 6 : nItems<=20 ? 4 : 3;
