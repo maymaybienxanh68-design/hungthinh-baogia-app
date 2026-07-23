@@ -122,12 +122,12 @@ input[type="number"] { width: 80px; }
         </div>
         <div class="form-group" style="position:relative;">
           <label>🔎 Chọn khách có sẵn (bấm tên là tự điền Tên/Địa chỉ/SĐT):</label>
-          <input type="text" id="quoteKhSearch" placeholder="Gõ tên hoặc SĐT khách..." autocomplete="off" oninput="khPickerSearch('quote')" onfocus="khPickerSearch('quote')" onblur="setTimeout(function(){var b=document.getElementById('quoteKhResults');if(b)b.style.display='none';},250)">
+          <input type="text" id="quoteKhSearch" placeholder="Gõ tên hoặc SĐT khách..." autocomplete="off" oninput="khPickerSearch('quote')" onfocus="khPickerSearch('quote')">
           <div id="quoteKhResults" class="kh-results" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid #ccc;width:100%;max-height:240px;overflow:auto;"></div>
         </div>
         <div class="form-group" style="position:relative;">
           <label>Kính gửi (Tên khách) — gõ tên là tự gợi ý:</label>
-          <input type="text" id="customerName" placeholder="Gõ tên khách, vd: hà nội / giovani..." autocomplete="off" oninput="khNameSearch()" onfocus="khNameSearch()" onblur="setTimeout(function(){var b=document.getElementById('customerNameResults');if(b)b.style.display='none';},250)">
+          <input type="text" id="customerName" placeholder="Gõ tên khách, vd: hà nội / giovani..." autocomplete="off" oninput="khNameSearch()" onfocus="khNameSearch()">
           <div id="customerNameResults" class="kh-results" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid #ccc;width:100%;max-height:240px;overflow:auto;"></div>
         </div>
         <div class="form-group">
@@ -145,9 +145,32 @@ input[type="number"] { width: 80px; }
           <button onclick="addToQuote()">Thêm</button>
           <div id="searchAddResults" style="position: absolute; background: white; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; width: 300px; z-index: 10; display: none;"></div>
         </div>
+        <div style="margin-top:12px;border:1px dashed #9db8d6;border-radius:8px;padding:10px;background:#f7fbff;">
+          <div style="font-weight:bold;color:#1f5c8a;cursor:pointer;" onclick="var b=document.getElementById('spAddBody');b.style.display=(b.style.display==='none'?'block':'none');">➕ Tự thêm sản phẩm mới (gõ tay hoặc nhập Excel) — bấm để mở/đóng</div>
+          <div id="spAddBody" style="display:none;margin-top:10px;">
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;">
+              <input type="text" id="sp_new_ten" placeholder="Tên sản phẩm *">
+              <input type="text" id="sp_new_ma" placeholder="Mã (bỏ trống = tự tạo)">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:8px;margin-top:8px;">
+              <input type="text" id="sp_new_dvt" placeholder="ĐVT (Cái, Bộ...)">
+              <input type="number" id="sp_new_gia" placeholder="Đơn giá">
+              <input type="text" id="sp_new_mota" placeholder="Mô tả (tuỳ chọn)">
+            </div>
+            <button onclick="spAddOne()" style="margin-top:8px;background:#2e7d32;">➕ Thêm vào danh mục</button>
+            <hr style="margin:12px 0;border:none;border-top:1px solid #dde;">
+            <div style="font-size:13px;color:#555;margin-bottom:6px;">Nhập nhiều cùng lúc — file Excel/CSV (cột: <b>Tên | Mã | ĐVT | Đơn giá | Mô tả</b>). Offline dùng ô dán bên dưới.</div>
+            <input type="file" id="spImpFile" accept=".xlsx,.xls,.csv"> <button onclick="importSpFile()">📄 Nhập từ file</button>
+            <textarea id="spImpPaste" placeholder="Hoặc DÁN bảng từ Excel vào đây (mỗi dòng 1 sản phẩm, các cột cách nhau bằng Tab)" style="width:100%;height:70px;margin-top:8px;box-sizing:border-box;"></textarea>
+            <button onclick="importSpPaste()" style="margin-top:6px;">📋 Nạp từ ô dán</button>
+            <div id="spImpResult"></div>
+            <div id="spStoredInfo" style="font-size:12px;color:#666;margin-top:6px;"></div>
+          </div>
+        </div>
         <button class="secondary" onclick="clearQuote()">Xóa báo giá</button>
 
         <h3 style="margin-top: 20px;">Danh sách hàng</h3>
+        <button onclick="addBlankQuoteItem()" style="background:#0277bd;margin-bottom:8px;">➕ Thêm dòng trống (tự nhập tất cả)</button>
         <table class="quote-table" id="quoteTable">
           <thead>
             <tr>
@@ -312,7 +335,7 @@ input[type="number"] { width: 80px; }
         <h3 style="margin:6px 0;">📥 Người nhận</h3>
         <div class="form-group" style="position:relative;">
           <label>🔎 Chọn khách:</label>
-          <input type="text" id="addrKhSearch" placeholder="Gõ tên hoặc SĐT khách..." autocomplete="off" oninput="khPickerSearch('addr')" onfocus="khPickerSearch('addr')" onblur="setTimeout(function(){var b=document.getElementById('addrKhResults');if(b)b.style.display='none';},250)">
+          <input type="text" id="addrKhSearch" placeholder="Gõ tên hoặc SĐT khách..." autocomplete="off" oninput="khPickerSearch('addr')" onfocus="khPickerSearch('addr')">
           <div id="addrKhResults" class="kh-results" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid #ccc;width:100%;max-height:240px;overflow:auto;"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -1865,6 +1888,7 @@ window.onload = function() {
   loadNccExtra();
   loadKhExtra();
   loadKhBGExtra();
+  loadSpExtra();
   initSenders();
   loadSavedQuotes();
   document.getElementById('quoteDate').valueAsDate = new Date();
@@ -2120,13 +2144,13 @@ function updateQuoteTable() {
   tbody.innerHTML = quoteData.items.map((item, itemIdx) => `
     <tr>
       <td>${itemIdx + 1}</td>
-      <td>${escapeHtml(item.name)}</td>
+      <td><input type="text" value="${escapeHtml(item.name)}" onchange="updateItem(${itemIdx}, 'name', this.value)" placeholder="Tên sản phẩm" style="width:160px;font-size:12px;"></td>
       <td><textarea rows="2" style="width:160px;font-size:12px;" placeholder="Nhập mô tả (nếu mẫu chưa có sẵn)" onchange="updateItem(${itemIdx}, 'description', this.value)">${escapeHtml(item.description || '')}</textarea></td>
       <td style="text-align:center;">
         ${item.img ? `<img src="${item.img}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;display:block;margin:0 auto 4px;">` : ''}
         <input type="file" accept="image/*" style="width:90px;font-size:11px;" onchange="handleImageUpload(${itemIdx}, this)">
       </td>
-      <td>${escapeHtml(item.unit)}</td>
+      <td><input type="text" value="${escapeHtml(item.unit)}" onchange="updateItem(${itemIdx}, 'unit', this.value)" placeholder="ĐVT" style="width:60px;font-size:12px;"></td>
       <td><input type="number" value="${item.qty}" onchange="updateItem(${itemIdx}, 'qty', this.value)"></td>
       <td><input type="number" value="${item.price}" onchange="updateItem(${itemIdx}, 'price', this.value)"></td>
       <td class="text-right">${formatPrice(item.qty * item.price)}</td>
@@ -2161,6 +2185,8 @@ function updateItem(idx, field, value) {
   if (field === 'price') quoteData.items[idx].price = parseInt(value) || 0;
   if (field === 'note') quoteData.items[idx].note = value;
   if (field === 'description') quoteData.items[idx].description = value;
+  if (field === 'name') quoteData.items[idx].name = value;
+  if (field === 'unit') quoteData.items[idx].unit = value;
   updateQuoteTable();
 }
 
@@ -2203,6 +2229,7 @@ function saveQuote() {
     return;
   }
 
+  syncNewProductsToCatalog();
   savedQuotes.push(JSON.parse(JSON.stringify(quoteData)));
   try {
     localStorage.setItem('savedQuotes', JSON.stringify(savedQuotes));
@@ -3027,7 +3054,7 @@ function clearKhExtra() { if (!confirm('Xóa toàn bộ khách đã nạp thêm 
 // ----- Người gửi -----
 function getSenders() { try { return JSON.parse(localStorage.getItem('senders') || '[]'); } catch (e) { return []; } }
 function setSenders(a) { localStorage.setItem('senders', JSON.stringify(a)); }
-function initSenders() { let s = getSenders(); if (!s.length) { s = [{ ten: 'HƯNG THỊNH SMART', sdt: '0982829806', diachi: 'Khu 13, xã Tu Vũ, H. Thanh Thủy, T. Phú Thọ' }]; setSenders(s); } }
+function initSenders() { let s = getSenders(); if (!s.length) { s = [{ ten: 'CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART', sdt: '0982829806', diachi: 'Khu 13, Hoàng Xá, Thanh Thủy, Phú Thọ' }]; setSenders(s); } }
 function renderSenderSelect() {
   let sel = document.getElementById('addr_senderSel'); if (!sel) return;
   let s = getSenders();
@@ -3249,18 +3276,21 @@ function _bgContentHtml(){
     'Chiết khấu đại lý áp dụng riêng cho khách hàng là đại lý phân phối, không áp dụng cho khách lẻ.',
     'Mức chiết khấu có thể thay đổi tùy theo sản lượng và chính sách từng thời kỳ.']
     .map(function(t,i){return '<div>'+(i+1)+'/ '+t+'</div>';}).join('');
-  var css='#htbg{color:#000;font-family:\"Times New Roman\",serif;font-size:13px;background:#fff;padding:6px 8px;width:780px;}'
-    +'#htbg *{box-sizing:border-box;font-family:\"Times New Roman\",serif;}'
-    +'#htbg .hd{display:flex;align-items:center;gap:12px;border-bottom:2px solid #1e7e34;padding-bottom:6px;}'
-    +'#htbg .hd img{width:72px;height:72px;object-fit:contain;}#htbg .hd .co{flex:1;text-align:center;}#htbg .hd .co b{font-size:15px;}#htbg .hd .co div{font-size:12px;}'
-    +'#htbg h1{text-align:center;font-size:20px;margin:10px 0 0;}#htbg .sub{text-align:center;font-style:italic;font-size:12px;margin-bottom:8px;}'
-    +'#htbg .kg div{margin:1px 0;}#htbg table{width:100%;border-collapse:collapse;margin-top:8px;}'
-    +'#htbg th,#htbg td{border:1px solid #333;padding:3px 5px;font-size:12px;}#htbg th{background:#1e7e34;color:#fff;text-align:center;}'
+  var nItems=items.length;
+  var rowPad = nItems<=1 ? 22 : nItems<=3 ? 16 : nItems<=6 ? 11 : nItems<=9 ? 8 : nItems<=14 ? 6 : nItems<=20 ? 4 : 3;
+  var tblFont = nItems<=9 ? 15 : nItems<=14 ? 14 : nItems<=20 ? 13 : 12;
+  var css='#htbg{color:#000;font-family:"Times New Roman",serif;font-size:15px;background:#fff;padding:8px 12px;width:780px;}'
+    +'#htbg *{box-sizing:border-box;font-family:"Times New Roman",serif;}'
+    +'#htbg .hd{display:flex;align-items:center;gap:14px;border-bottom:2.5px solid #1e7e34;padding-bottom:8px;}'
+    +'#htbg .hd img{width:54px;height:54px;object-fit:contain;background:transparent;}#htbg .hd .co{flex:1;text-align:center;}#htbg .hd .co b{font-size:17px;}#htbg .hd .co div{font-size:13px;margin-top:2px;}'
+    +'#htbg h1{text-align:center;font-size:28px;font-weight:bold;letter-spacing:1px;margin:12px 0 2px;}#htbg .sub{text-align:center;font-style:italic;font-size:13px;margin-bottom:10px;}'
+    +'#htbg .kg div{margin:2px 0;font-size:15px;}#htbg table{width:100%;border-collapse:collapse;margin-top:10px;}'
+    +'#htbg th,#htbg td{border:1px solid #333;padding:'+rowPad+'px 6px;font-size:'+tblFont+'px;vertical-align:middle;}#htbg th{background:#1e7e34;color:#fff;text-align:center;font-size:'+(tblFont+1)+'px;padding:7px 6px;}'
     +'#htbg .c{text-align:center;}#htbg .r{text-align:right;}#htbg .b{font-weight:bold;}'
-    +'#htbg .luu{margin-top:8px;}#htbg .luu .t{font-weight:bold;text-decoration:underline;}#htbg .luu div{font-size:12px;margin:1px 0;}'
-    +'#htbg .pay{margin-top:10px;display:flex;justify-content:space-between;align-items:flex-start;}'
-    +'#htbg .pay .hdr{background:#1e7e34;color:#fff;font-weight:bold;padding:3px 6px;}#htbg .pay .li{margin:3px 0;font-size:12.5px;}'
-    +'#htbg .pay img.qr{width:95px;height:95px;}#htbg .sign{margin-top:8px;text-align:center;width:330px;margin-left:auto;margin-right:20px;}#htbg .sign .r1{font-weight:bold;}#htbg .sign .r2{font-style:italic;font-size:12px;}#htbg .sign img{width:150px;margin-top:2px;}';
+    +'#htbg .luu{margin-top:10px;}#htbg .luu .t{font-weight:bold;text-decoration:underline;font-size:14px;}#htbg .luu div{font-size:13px;margin:2px 0;}'
+    +'#htbg .pay{margin-top:12px;display:flex;justify-content:space-between;align-items:flex-start;}'
+    +'#htbg .pay .hdr{background:#1e7e34;color:#fff;font-weight:bold;padding:4px 8px;font-size:15px;}#htbg .pay .li{margin:4px 0;font-size:15px;}'
+    +'#htbg .pay img.qr{width:95px;height:95px;}#htbg .sign{margin-top:10px;text-align:center;width:330px;margin-left:auto;margin-right:20px;}#htbg .sign .r1{font-weight:bold;font-size:15px;}#htbg .sign .r2{font-style:italic;font-size:13px;}#htbg .sign img{width:125px;margin-top:2px;}';
   var payR='<div style=\"flex:1;padding-right:10px;\"><div class=\"hdr\">THÔNG TIN THANH TOÁN</div>'
     +'<div class=\"li\"><b>Ngân hàng:</b> MB Bank - Chi Nhánh Thanh Thủy</div>'
     +'<div class=\"li\"><b>Chủ tài khoản:</b> CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART</div>'
@@ -3280,6 +3310,7 @@ function _bgContentHtml(){
 function printBaoGiaOffline(){
   if(typeof quoteData==='undefined'||!quoteData.items||quoteData.items.length===0){ alert('❌ Chưa có sản phẩm trong báo giá'); return; }
   if(typeof html2pdf==='undefined'){ alert('Chưa tải được thư viện tạo PDF. Hãy tải lại trang.'); return; }
+  try{ syncNewProductsToCatalog(); }catch(e){}
   var d=_bgContentHtml();
   var ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(255,255,255,.98);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-size:20px;color:#1e7e34;font-weight:bold;';
@@ -3303,6 +3334,91 @@ function printBaoGiaOffline(){
       });
     }).catch(function(e){ _clean(); alert('Lỗi tạo PDF: '+(e&&e.message||e)); });
   }, 250);
+}
+
+
+/* Ẩn dropdown chọn khách khi bấm RA NGOÀI (thay onblur hay ẩn nhầm khi đang gõ) */
+document.addEventListener('mousedown', function(e){
+  [['quoteKhSearch','quoteKhResults'],['addrKhSearch','addrKhResults'],['customerName','customerNameResults']].forEach(function(p){
+    var inp=document.getElementById(p[0]), box=document.getElementById(p[1]);
+    if(box && inp && e.target!==inp && !box.contains(e.target)) box.style.display='none';
+  });
+});
+
+
+/* ===== TỰ THÊM SẢN PHẨM (gõ tay / nhập Excel) — lưu localStorage spExtra, gộp vào appData.s ===== */
+var spExtra = [];
+function loadSpExtra(){
+  try{ spExtra = JSON.parse(localStorage.getItem('spExtra') || '[]'); }catch(e){ spExtra = []; }
+  spExtra.forEach(function(p){ var ix = appData.s.findIndex(function(x){ return x.c === p.c; }); if(ix>=0) appData.s[ix] = Object.assign({}, appData.s[ix], p); else appData.s.push(p); });
+  spStoredInfo();
+}
+function saveSpExtra(){ localStorage.setItem('spExtra', JSON.stringify(spExtra)); }
+function spMakeCode(name){ var base = normalizeVN(name).toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'SP'; var c=base, i=1; while(appData.s.some(function(x){return x.c===c;})){ c = base + '-' + (i++); } return c; }
+function spAddProduct(o){
+  var ten=(o.n||'').toString().trim(); if(!ten) return false;
+  var ma=(o.c||'').toString().trim() || spMakeCode(ten);
+  var prod={ n:ten, c:ma, u:(o.u||'').toString().trim()||'Cái', p:(Number(o.p)||0), v:0, t:0, a:[], img:'', desc:(o.desc||'').toString().trim() };
+  var ex=appData.s.find(function(x){return x.c===ma;});
+  if(ex){ ex.n=prod.n; ex.u=prod.u; ex.p=prod.p; ex.desc=prod.desc; } else { appData.s.push(prod); }
+  spExtra = spExtra.filter(function(x){return x.c!==ma;}); spExtra.push(prod); saveSpExtra();
+  return true;
+}
+function spAddOne(){
+  var ten=document.getElementById('sp_new_ten').value;
+  if(!ten.trim()){ alert('❌ Nhập Tên sản phẩm trước.'); return; }
+  spAddProduct({ n:ten, c:document.getElementById('sp_new_ma').value, u:document.getElementById('sp_new_dvt').value, p:document.getElementById('sp_new_gia').value, desc:document.getElementById('sp_new_mota').value });
+  ['sp_new_ten','sp_new_ma','sp_new_dvt','sp_new_gia','sp_new_mota'].forEach(function(id){ document.getElementById(id).value=''; });
+  var d=document.getElementById('spImpResult'); if(d) d.innerHTML='<div style="margin-top:8px;padding:8px;background:#f4fff4;border:1px solid #cfe9cf;border-radius:6px;">✅ Đã thêm/cập nhật sản phẩm. Gõ tên ở ô "Tìm sản phẩm" phía trên để đưa vào báo giá.</div>';
+  spStoredInfo();
+}
+function spParseAoa(aoa){
+  var hi=-1,cN=-1,cC=-1,cU=-1,cP=-1,cD=-1;
+  for(var i=0;i<Math.min(aoa.length,15);i++){ var row=aoa[i]||[]; var joined=row.map(function(x){return normalizeVN(x);}).join(' ');
+    if(/ten san pham|ten sp|ten hang|ten hoa|^ten| ten/.test(joined)){ hi=i; row.forEach(function(h,j){ var hn=normalizeVN(h);
+      if(cN<0&&/ten san pham|ten sp|ten hang|ten hoa|^ten$|ten/.test(hn))cN=j;
+      if(cC<0&&/^ma$|ma sp|ma hang|ma chuan|ma san pham|code/.test(hn))cC=j;
+      if(cU<0&&/dvt|don vi|dv tinh|unit/.test(hn))cU=j;
+      if(cP<0&&/don gia|gia ban|^gia$|gia|price/.test(hn))cP=j;
+      if(cD<0&&/mo ta|dien giai|ghi chu|desc|note/.test(hn))cD=j; }); break; } }
+  var out=[];
+  if(hi>=0&&cN>=0){ for(var k=hi+1;k<aoa.length;k++){ var r=aoa[k]||[]; var n=r[cN]; if(typeof n!=='string'||!n.trim())continue;
+    out.push({n:n.trim(), c:(cC>=0&&r[cC]!=null)?String(r[cC]).trim():'', u:(cU>=0&&r[cU]!=null)?String(r[cU]).trim():'', p:(cP>=0&&r[cP]!=null)?r[cP]:0, desc:(cD>=0&&r[cD]!=null)?String(r[cD]).trim():''}); } }
+  else { aoa.forEach(function(r){ if(!Array.isArray(r)||!r[0])return; var n=String(r[0]).trim(); if(!n||/^(ten|ten san pham|stt|ma)$/.test(normalizeVN(n)))return; out.push({n:n, c:r[1]!=null?String(r[1]).trim():'', u:r[2]!=null?String(r[2]).trim():'', p:r[3]!=null?r[3]:0, desc:r[4]!=null?String(r[4]).trim():''}); }); }
+  return out;
+}
+function spDoImport(rows){ var n=0; rows.forEach(function(r){ if(spAddProduct(r)) n++; });
+  var div=document.getElementById('spImpResult'); if(div) div.innerHTML='<div style="margin-top:10px;padding:10px;background:#f4fff4;border:1px solid #cfe9cf;border-radius:6px;">✅ Đã nạp/cập nhật <strong>'+n+'</strong> sản phẩm vào danh mục.</div>';
+  spStoredInfo();
+}
+function importSpFile(){ var f=document.getElementById('spImpFile').files[0]; if(!f){ alert('❌ Chọn file trước (hoặc dùng ô Dán).'); return; }
+  if(typeof XLSX==='undefined'){ alert('❌ Chưa tải được thư viện đọc Excel (cần mạng). Hãy dùng ô "Dán bảng".'); return; }
+  var reader=new FileReader(); reader.onload=function(e){ try{ var wb=XLSX.read(e.target.result,{type:'array'}); var all=[]; wb.SheetNames.forEach(function(sn){ all=all.concat(spParseAoa(XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1}))); }); if(all.length===0){ alert('❌ Không đọc được sản phẩm nào. Cần ít nhất cột Tên.'); return; } spDoImport(all); }catch(err){ alert('❌ Lỗi đọc file: '+err.message); } }; reader.readAsArrayBuffer(f);
+}
+function importSpPaste(){ var t=document.getElementById('spImpPaste').value.trim(); if(!t){ alert('❌ Dán bảng vào ô trước.'); return; }
+  var aoa=t.split(/\r?\n/).map(function(line){ return line.split(/\t|;|,/).map(function(c){ return c.trim(); }); });
+  var rows=spParseAoa(aoa); if(rows.length===0){ alert('❌ Không đọc được. Mỗi dòng: Tên [Tab] Mã [Tab] ĐVT [Tab] Đơn giá [Tab] Mô tả'); return; } spDoImport(rows);
+}
+function spStoredInfo(){ var d=document.getElementById('spStoredInfo'); if(d) d.innerHTML='📦 Sản phẩm anh tự thêm đang lưu: <strong>'+spExtra.length+'</strong> — Tổng danh mục hiện có: <strong>'+appData.s.length+'</strong>.'; }
+
+
+/* ===== Tự nhập dòng mới + tự lưu sản phẩm mới của báo giá vào danh mục ===== */
+function addBlankQuoteItem(){
+  quoteData.items.push({ name:'', code:'', unit:'', qty:1, price:0, note:'', description:'', img:'' });
+  updateQuoteTable();
+  // đưa con trỏ tới ô Tên của dòng mới cho dễ nhập
+  setTimeout(function(){ var tb=document.getElementById('quoteBody'); if(tb){ var rows=tb.querySelectorAll('tr'); var last=rows[rows.length-1]; if(last){ var inp=last.querySelector('input[type=text]'); if(inp) inp.focus(); } } },50);
+}
+function syncNewProductsToCatalog(){
+  var n=0;
+  (quoteData.items||[]).forEach(function(it){
+    if(!it.name || !it.name.trim()) return;
+    var nn=normalizeVN(it.name);
+    var exists=appData.s.some(function(p){ return normalizeVN(p.n)===nn || (it.code && p.c && p.c===it.code); });
+    if(!exists){ if(spAddProduct({ n:it.name, c:it.code||'', u:it.unit||'', p:it.price||0, desc:it.description||'' })) n++; }
+  });
+  if(n>0 && typeof spStoredInfo==='function') spStoredInfo();
+  return n;
 }
 
 </script>
