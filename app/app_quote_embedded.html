@@ -110,14 +110,15 @@ input[type="number"] { width: 80px; }
     <div id="tab1" class="tab-content">
       <div class="card">
         <h2>📝 Tạo Báo giá</h2>
+        <input type="hidden" id="quoteNo" value="">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-          <div class="form-group">
-            <label>Số báo giá:</label>
-            <input type="text" id="quoteNo" placeholder="BG-001/2026">
-          </div>
           <div class="form-group">
             <label>Ngày:</label>
             <input type="date" id="quoteDate">
+          </div>
+          <div class="form-group">
+            <label>Thuế GTGT (%) — mặc định 8, sửa được:</label>
+            <input type="number" id="quoteVat" value="8" min="0" step="0.5">
           </div>
         </div>
         <div class="form-group" style="position:relative;">
@@ -3266,9 +3267,11 @@ function _bgContentHtml(){
       +'<td class="c">'+escapeHtml(it.unit||'')+'</td><td class="c">'+(it.qty||0)+'</td>'
       +'<td class="r">'+_fmtVN(it.price||0)+'</td><td class="r">'+_fmtVN(amt)+'</td><td></td></tr>';}).join('');
   var pre=hasDesc?6:5;
+  var vat=parseFloat(g('quoteVat')); if(!(vat>=0)) vat=8;
+  var vatAmt=Math.round(total*vat/100), grand=total+vatAmt;
   var tot='<tr><td colspan="'+pre+'" class="r b">Cộng tiền hàng</td><td class="r b">'+_fmtVN(total)+'</td><td></td></tr>'
-    +'<tr><td colspan="'+pre+'" class="r b">Thuế GTGT (VAT %)</td><td class="r">0%</td><td></td></tr>'
-    +'<tr><td colspan="'+pre+'" class="r b">TỔNG CỘNG THANH TOÁN</td><td class="r b">'+_fmtVN(total)+'</td><td></td></tr>';
+    +'<tr><td colspan="'+pre+'" class="r b">Thuế GTGT (VAT '+vat+'%)</td><td class="r b">'+_fmtVN(vatAmt)+'</td><td></td></tr>'
+    +'<tr><td colspan="'+pre+'" class="r b">TỔNG CỘNG THANH TOÁN</td><td class="r b">'+_fmtVN(grand)+'</td><td></td></tr>';
   var head='<th class="c">STT</th><th>Tên hàng hóa dịch vụ</th>'+(hasDesc?'<th>Mô tả sản phẩm</th>':'')
     +'<th class="c">ĐVT</th><th class="c">Số lượng</th><th class="c">Đơn giá (VNĐ)</th><th class="c">Thành tiền (VNĐ)</th><th class="c">Ghi chú</th>';
   var luu=['Đơn giá trên là giá chưa bao gồm thuế GTGT.','Bên bán có trách nhiệm xuất hóa đơn GTGT cho bên mua.',
@@ -3281,15 +3284,15 @@ function _bgContentHtml(){
   var tblFont = nItems<=9 ? 15 : nItems<=14 ? 14 : nItems<=20 ? 13 : 12;
   var css='#htbg{color:#000;font-family:"Times New Roman",serif;font-size:15px;background:#fff;padding:8px 12px;width:780px;}'
     +'#htbg *{box-sizing:border-box;font-family:"Times New Roman",serif;}'
-    +'#htbg .hd{display:flex;align-items:center;gap:14px;border-bottom:2.5px solid #1e7e34;padding-bottom:8px;}'
-    +'#htbg .hd img{width:54px;height:54px;object-fit:contain;background:transparent;}#htbg .hd .co{flex:1;text-align:center;}#htbg .hd .co b{font-size:17px;}#htbg .hd .co div{font-size:13px;margin-top:2px;}'
+    +'#htbg .hd{display:flex;align-items:center;gap:14px;border-bottom:2px solid #333;padding-bottom:8px;}'
+    +'#htbg .hd img{width:38px;height:38px;object-fit:contain;background:transparent;}#htbg .hd .co{flex:1;text-align:center;}#htbg .hd .co b{font-size:17px;}#htbg .hd .co div{font-size:13px;margin-top:2px;}'
     +'#htbg h1{text-align:center;font-size:28px;font-weight:bold;letter-spacing:1px;margin:12px 0 2px;}#htbg .sub{text-align:center;font-style:italic;font-size:13px;margin-bottom:10px;}'
     +'#htbg .kg div{margin:2px 0;font-size:15px;}#htbg table{width:100%;border-collapse:collapse;margin-top:10px;}'
-    +'#htbg th,#htbg td{border:1px solid #333;padding:'+rowPad+'px 6px;font-size:'+tblFont+'px;vertical-align:middle;}#htbg th{background:#1e7e34;color:#fff;text-align:center;font-size:'+(tblFont+1)+'px;padding:7px 6px;}'
+    +'#htbg th,#htbg td{border:1px solid #333;padding:'+rowPad+'px 6px;font-size:'+tblFont+'px;vertical-align:middle;}#htbg th{background:#fff;color:#000;text-align:center;font-weight:bold;font-size:'+(tblFont+1)+'px;padding:7px 6px;}'
     +'#htbg .c{text-align:center;}#htbg .r{text-align:right;}#htbg .b{font-weight:bold;}'
     +'#htbg .luu{margin-top:10px;}#htbg .luu .t{font-weight:bold;text-decoration:underline;font-size:14px;}#htbg .luu div{font-size:13px;margin:2px 0;}'
     +'#htbg .pay{margin-top:12px;display:flex;justify-content:space-between;align-items:flex-start;}'
-    +'#htbg .pay .hdr{background:#1e7e34;color:#fff;font-weight:bold;padding:4px 8px;font-size:15px;}#htbg .pay .li{margin:4px 0;font-size:15px;}'
+    +'#htbg .pay .hdr{background:#fff;color:#000;font-weight:bold;padding:4px 8px;font-size:15px;border-bottom:1.5px solid #333;}#htbg .pay .li{margin:4px 0;font-size:15px;}'
     +'#htbg .pay img.qr{width:95px;height:95px;}#htbg .sign{margin-top:10px;text-align:center;width:330px;margin-left:auto;margin-right:20px;}#htbg .sign .r1{font-weight:bold;font-size:15px;}#htbg .sign .r2{font-style:italic;font-size:13px;}#htbg .sign img{width:125px;margin-top:2px;}';
   var payR='<div style=\"flex:1;padding-right:10px;\"><div class=\"hdr\">THÔNG TIN THANH TOÁN</div>'
     +'<div class=\"li\"><b>Ngân hàng:</b> MB Bank - Chi Nhánh Thanh Thủy</div>'
@@ -3298,10 +3301,10 @@ function _bgContentHtml(){
   var inner='<style>'+css+'</style>'
     +'<div class=\"hd\"><img src=\"'+HT_LOGO+'\"><div class=\"co\"><b>CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART</b>'
     +'<div>Địa chỉ: Khu 13, Hoàng Xá, Thanh Thủy, Phú Thọ</div><div>Điện thoại: 0982829806 &nbsp;|&nbsp; MST: 2601158676</div></div></div>'
-    +'<h1>BẢNG BÁO GIÁ</h1><div class=\"sub\">Số: '+escapeHtml(qn)+'/2026 &nbsp; '+escapeHtml(dstr)+'</div>'
+    +'<h1>BẢNG BÁO GIÁ</h1><div class=\"sub\">'+escapeHtml(dstr)+'</div>'
     +'<div class=\"kg\"><div><b>Kính gửi:</b> '+escapeHtml(cust)+'</div><div><b>Địa chỉ:</b> '+escapeHtml(addr)+'</div><div><b>Điện thoại:</b> '+escapeHtml(phone)+'</div></div>'
     +'<table><thead><tr>'+head+'</tr></thead><tbody>'+rows+tot+'</tbody></table>'
-    +'<div style=\"margin-top:6px;\"><b>Bằng chữ:</b> '+_docSo(total)+'</div>'
+    +'<div style=\"margin-top:6px;\"><b>Bằng chữ:</b> '+_docSo(grand)+'</div>'
     +'<div class=\"luu\"><div class=\"t\">Lưu ý:</div>'+luu+'</div>'
     +'<div class=\"pay\">'+payR+'</div>'
     +'<div class=\"sign\"><div class=\"r1\">ĐẠI DIỆN HƯNG THỊNH SMART</div><div class=\"r2\">(Ký, ghi rõ họ tên, đóng dấu)</div><img src=\"'+HT_STAMP+'\"></div>';
