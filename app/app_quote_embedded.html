@@ -111,15 +111,9 @@ input[type="number"] { width: 80px; }
       <div class="card">
         <h2>📝 Tạo Báo giá</h2>
         <input type="hidden" id="quoteNo" value="">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-          <div class="form-group">
-            <label>Ngày:</label>
-            <input type="date" id="quoteDate">
-          </div>
-          <div class="form-group">
-            <label>Thuế GTGT (%) — mặc định 8, sửa được:</label>
-            <input type="number" id="quoteVat" value="8" min="0" step="0.5">
-          </div>
+        <div class="form-group">
+          <label>Ngày:</label>
+          <input type="date" id="quoteDate">
         </div>
         <div class="form-group" style="position:relative;">
           <label>🔎 Chọn khách có sẵn (bấm tên là tự điền Tên/Địa chỉ/SĐT):</label>
@@ -141,6 +135,10 @@ input[type="number"] { width: 80px; }
         </div>
 
         <h3>Thêm sản phẩm</h3>
+        <div class="form-group" style="max-width:280px;">
+          <label>Thuế GTGT (%) — luôn mặc định 8, sửa được:</label>
+          <input type="number" id="quoteVat" value="8" min="0" step="0.5">
+        </div>
         <div style="display: grid; grid-template-columns: 1fr 100px 1fr; gap: 10px;">
           <input type="text" id="searchAdd" placeholder="Tìm sản phẩm..." onkeyup="searchAddProduct()">
           <button onclick="addToQuote()">Thêm</button>
@@ -3283,7 +3281,7 @@ function _bgContentHtml(){
   var css='#htbg{color:#000;font-family:"Times New Roman",serif;font-size:15px;background:#fff;padding:8px 12px;width:780px;}'
     +'#htbg *{box-sizing:border-box;font-family:"Times New Roman",serif;}'
     +'#htbg .hd{display:flex;align-items:center;gap:14px;border-bottom:2px solid #333;padding-bottom:8px;}'
-    +'#htbg .hd img{width:38px;height:38px;object-fit:contain;background:transparent;}#htbg .hd .co{flex:1;text-align:center;}#htbg .hd .co b{font-size:17px;}#htbg .hd .co div{font-size:13px;margin-top:2px;}'
+    +'#htbg .hd img{width:54px;height:54px;object-fit:contain;background:transparent;}#htbg .hd .co{flex:1;text-align:center;}#htbg .hd .co b{font-size:17px;}#htbg .hd .co div{font-size:13px;margin-top:2px;}'
     +'#htbg h1{text-align:center;font-size:28px;font-weight:bold;letter-spacing:1px;margin:12px 0 2px;}#htbg .sub{text-align:center;font-style:italic;font-size:13px;margin-bottom:10px;}'
     +'#htbg .kg div{margin:2px 0;font-size:15px;}#htbg table{width:100%;border-collapse:collapse;margin-top:10px;}'
     +'#htbg th,#htbg td{border:1px solid #333;padding:'+rowPad+'px 6px;font-size:'+tblFont+'px;vertical-align:middle;}#htbg th{background:#fff;color:#000;text-align:center;font-weight:bold;font-size:'+(tblFont+1)+'px;padding:7px 6px;}'
@@ -3291,7 +3289,7 @@ function _bgContentHtml(){
     +'#htbg .luu{margin-top:10px;}#htbg .luu .t{font-weight:bold;text-decoration:underline;font-size:14px;}#htbg .luu div{font-size:13px;margin:2px 0;}'
     +'#htbg .pay{margin-top:12px;display:flex;justify-content:space-between;align-items:flex-start;}'
     +'#htbg .pay .hdr{background:#fff;color:#000;font-weight:bold;padding:4px 8px;font-size:15px;border-bottom:1.5px solid #333;}#htbg .pay .li{margin:4px 0;font-size:15px;}'
-    +'#htbg .pay img.qr{width:95px;height:95px;}#htbg .sign{margin-top:10px;text-align:center;width:330px;margin-left:auto;margin-right:20px;}#htbg .sign .r1{font-weight:bold;font-size:15px;}#htbg .sign .r2{font-style:italic;font-size:13px;}#htbg .sign img{width:125px;margin-top:2px;}';
+    +'#htbg .pay img.qr{width:95px;height:95px;}#htbg .sign{margin-top:10px;text-align:center;width:330px;margin-left:auto;margin-right:20px;}#htbg .sign .r1{font-weight:bold;font-size:15px;}#htbg .sign .r2{font-style:italic;font-size:13px;}#htbg .sign img{width:88px;margin-top:2px;}';
   var payR='<div style=\"flex:1;padding-right:10px;\"><div class=\"hdr\">THÔNG TIN THANH TOÁN</div>'
     +'<div class=\"li\"><b>Ngân hàng:</b> MB Bank - Chi Nhánh Thanh Thủy</div>'
     +'<div class=\"li\"><b>Chủ tài khoản:</b> CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART</div>'
