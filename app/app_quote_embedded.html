@@ -3280,9 +3280,9 @@ function _bgContentHtml(){
   var pre=hasDesc?6:5;
   var vat=parseFloat(g('quoteVat')); if(!(vat>=0)) vat=8;
   var vatAmt=Math.round(total*vat/100), grand=total+vatAmt;
-  var tot='<tr><td colspan="'+pre+'" class="r b">Cộng tiền hàng</td><td class="r b">'+_fmtVN(total)+'</td><td></td></tr>'
-    +'<tr><td colspan="'+pre+'" class="r b">Thuế GTGT (VAT '+vat+'%)</td><td class="r b">'+_fmtVN(vatAmt)+'</td><td></td></tr>'
-    +'<tr><td colspan="'+pre+'" class="r b">TỔNG CỘNG THANH TOÁN</td><td class="r b">'+_fmtVN(grand)+'</td><td></td></tr>';
+  var tot='<tr><td colspan="'+pre+'" class="r b sum">Cộng tiền hàng</td><td class="r b sum">'+_fmtVN(total)+'</td><td class="sum"></td></tr>'
+    +'<tr><td colspan="'+pre+'" class="r b sum">Thuế GTGT (VAT '+vat+'%)</td><td class="r b sum">'+_fmtVN(vatAmt)+'</td><td class="sum"></td></tr>'
+    +'<tr><td colspan="'+pre+'" class="r b sum">TỔNG CỘNG THANH TOÁN</td><td class="r b sum">'+_fmtVN(grand)+'</td><td class="sum"></td></tr>';
   var head='<th class="c">STT</th><th>Tên hàng hóa dịch vụ</th>'+(hasDesc?'<th>Mô tả sản phẩm</th>':'')
     +'<th class="c">ĐVT</th><th class="c">Số lượng</th><th class="c">Đơn giá (VNĐ)</th><th class="c">Thành tiền (VNĐ)</th><th class="c">Ghi chú</th>';
   var luu=['Đơn giá trên là giá chưa bao gồm thuế GTGT.','Bên bán có trách nhiệm xuất hóa đơn GTGT cho bên mua.',
@@ -3298,7 +3298,7 @@ function _bgContentHtml(){
     +'#htbg h1{text-align:center;font-size:28px;font-weight:bold;letter-spacing:1px;margin:12px 0 2px;}#htbg .sub{text-align:center;font-style:italic;font-size:13px;margin-bottom:10px;}'
     +'#htbg .kg div{margin:2px 0;font-size:15px;}#htbg table{width:100%;border-collapse:collapse;margin-top:10px;}'
     +'#htbg th,#htbg td{border:1px solid #333;padding:'+rowPad+'px 6px;font-size:'+tblFont+'px;vertical-align:middle;}#htbg th{background:#fff;color:#000;text-align:center;font-weight:bold;font-size:'+(tblFont+1)+'px;padding:7px 6px;}'
-    +'#htbg .c{text-align:center;}#htbg .r{text-align:right;}#htbg .b{font-weight:bold;}'
+    +'#htbg .c{text-align:center;}#htbg .r{text-align:right;}#htbg .b{font-weight:bold;}#htbg td.sum{padding-top:4px;padding-bottom:4px;}'
     +'#htbg .luu{margin-top:10px;}#htbg .luu .t{font-weight:bold;text-decoration:underline;font-size:14px;}#htbg .luu div{font-size:13px;margin:2px 0;}'
     +'#htbg .pay{margin-top:12px;display:flex;justify-content:space-between;align-items:flex-start;}'
     +'#htbg .pay .hdr{background:#fff;color:#000;font-weight:bold;padding:4px 8px;font-size:15px;border-bottom:1.5px solid #333;}#htbg .pay .li{margin:4px 0;font-size:15px;}'
