@@ -3320,8 +3320,8 @@ function _bgContentHtml(){
     'Giao hàng: Theo thỏa thuận.','Thanh toán: Theo thỏa thuận.','Báo giá có hiệu lực trong vòng 15 ngày kể từ ngày báo giá.']
     .map(function(t,i){return '<div>'+(i+1)+'/ '+t+'</div>';}).join('');
   var nItems=items.length;
-  var rowPad = nItems<=1 ? 16 : nItems<=3 ? 12 : nItems<=6 ? 9 : nItems<=9 ? 7 : nItems<=14 ? 5 : nItems<=20 ? 4 : 3;
-  var tblFont = nItems<=6 ? 15 : nItems<=9 ? 14 : nItems<=14 ? 13 : nItems<=20 ? 12 : 11;
+  var rowPad = nItems<=1 ? 16 : nItems<=3 ? 12 : nItems<=6 ? 9 : nItems<=9 ? 7 : nItems<=14 ? 5 : nItems<=18 ? 4 : nItems<=24 ? 3 : 2;
+  var tblFont = nItems<=6 ? 15 : nItems<=9 ? 14 : nItems<=14 ? 13 : nItems<=18 ? 12 : nItems<=24 ? 11 : 10;
   var css='#htbg{color:#000;font-family:"Times New Roman",serif;font-size:15px;background:#fff;padding:8px 12px;width:780px;}'
     +'#htbg *{box-sizing:border-box;font-family:"Times New Roman",serif;}'
     +'#htbg .hd{display:flex;align-items:center;gap:14px;border-bottom:2px solid #333;padding-bottom:8px;}'
