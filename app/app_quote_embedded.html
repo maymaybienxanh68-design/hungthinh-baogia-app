@@ -3350,8 +3350,6 @@ function printBaoGiaOffline(){
   try{ autoArchiveQuote(); }catch(e){}
   var d=_bgContentHtml();
   var _isMob=/Android|webOS|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'');
-  var _preWin=_isMob?window.open('','_blank'):null;
-  if(_preWin){ try{ _preWin.document.write('<!doctype html><meta name=viewport content="width=device-width,initial-scale=1"><p style="font:16px -apple-system,Arial,sans-serif;padding:24px;color:#1f5c8a">\u23F3 Đang tạo PDF báo giá, vui lòng chờ...</p>'); }catch(e){} }
   var ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(255,255,255,.98);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-size:20px;color:#1e7e34;font-weight:bold;';
   ov.textContent='⏳ Đang tạo PDF báo giá...';
@@ -3372,7 +3370,20 @@ function printBaoGiaOffline(){
         var x=(pageW-imgW)/2, y=margin;
         pdf.addPage(); pdf.addImage(c.toDataURL('image/jpeg',0.96),'JPEG',x,y,imgW,imgH);
         for(var i=tot;i>=1;i--) pdf.deletePage(i);
-        var _fn='BaoGia_'+d.name+'.pdf'; try{ if(_isMob){ var _u=pdf.output('bloburl'); if(_preWin && !_preWin.closed){ _preWin.location.href=_u; } else { var _a=document.createElement('a'); _a.href=_u; _a.download=_fn; _a.target='_blank'; document.body.appendChild(_a); _a.click(); _a.remove(); } } else { pdf.save(_fn); } }catch(_e){ try{ pdf.save(_fn); }catch(_e2){ if(_preWin&&!_preWin.closed){try{_preWin.close();}catch(_){}} alert('Thiết bị không tạo được PDF: '+(_e2&&_e2.message||_e2)); } } _clean();
+        var _fn='BaoGia_'+d.name+'.pdf';
+        if(_isMob){
+          try{
+            var _blob=pdf.output('blob'); var _url=URL.createObjectURL(_blob);
+            _clean();
+            var _res=document.createElement('div');
+            _res.style.cssText='position:fixed;inset:0;background:#0f3554;z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;font-family:-apple-system,Arial,sans-serif;';
+            var _t=document.createElement('div'); _t.style.cssText='color:#fff;font-size:18px;font-weight:bold;'; _t.textContent='\u2705 \u0110\u00e3 t\u1ea1o b\u00e1o gi\u00e1 PDF'; _res.appendChild(_t);
+            var _h=document.createElement('div'); _h.style.cssText='color:#cfe0ef;font-size:14px;max-width:320px;line-height:1.5;'; _h.textContent='B\u1ea5m n\u00fat b\u00ean d\u01b0\u1edbi \u0111\u1ec3 m\u1edf PDF, r\u1ed3i b\u1ea5m n\u00fat Chia s\u1ebb \u2191 \u0111\u1ec3 L\u01b0u v\u00e0o T\u1ec7p / g\u1eedi Zalo.'; _res.appendChild(_h);
+            var _a=document.createElement('a'); _a.href=_url; _a.target='_blank'; _a.rel='noopener'; _a.setAttribute('download',_fn); _a.textContent='\ud83d\udcc4 M\u1edf / T\u1ea3i PDF'; _a.style.cssText='background:#27ae60;color:#fff;padding:16px 30px;border-radius:10px;font-size:18px;font-weight:bold;text-decoration:none;'; _res.appendChild(_a);
+            var _cl=document.createElement('button'); _cl.textContent='\u0110\u00f3ng'; _cl.style.cssText='background:#888;color:#fff;padding:12px 24px;border:none;border-radius:8px;font-size:15px;'; _cl.onclick=function(){ try{URL.revokeObjectURL(_url);}catch(e){} try{document.body.removeChild(_res);}catch(e){} }; _res.appendChild(_cl);
+            document.body.appendChild(_res);
+          }catch(_e){ _clean(); alert('Thi\u1ebft b\u1ecb kh\u00f4ng t\u1ea1o \u0111\u01b0\u1ee3c PDF: '+(_e&&_e.message||_e)); }
+        } else { pdf.save(_fn); _clean(); }
       });
     }).catch(function(e){ _clean(); alert('Lỗi tạo PDF: '+(e&&e.message||e)); });
   }, 250);
