@@ -1888,6 +1888,7 @@ window.onload = function() {
   loadKhExtra();
   loadKhBGExtra();
   loadSpExtra();
+  loadSpMerges();
   initSenders();
   loadSavedQuotes();
   document.getElementById('quoteDate').valueAsDate = new Date();
@@ -2347,7 +2348,7 @@ function renderMergeReview() {
     let ordered = g.idxs.slice().sort((x, y) => (x === keep ? -1 : y === keep ? 1 : appData.s[y].t - appData.s[x].t));
     html += '<div style="border:1px solid #ddd;border-radius:6px;padding:10px;margin-bottom:12px;">' +
       '<div style="font-weight:bold;color:#1f5c8a;margin-bottom:6px;">' + (gi + 1) + '. ' + escapeHtml(g.name) +
-      ' <span style="color:#999;font-weight:normal;">(' + g.idxs.length + ' mã)</span></div>' +
+      ' <span style="color:#999;font-weight:normal;">(' + g.idxs.length + ' mã)</span>' + '<button onclick="mergeGroupManual(' + gi + ')" style="background:#2e7d32;color:#fff;font-size:12px;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;float:right;">🔗 Gộp nhóm này</button>' + '</div>' +
       '<table><thead><tr><th>Giữ</th><th>Tên</th><th>Mã chuẩn</th><th>ĐV</th><th>Giá bán</th><th>Giá vốn</th><th>Tồn</th><th>Alias</th></tr></thead><tbody>' +
       ordered.map(i => {
         let p = appData.s[i];
@@ -3418,6 +3419,44 @@ function syncNewProductsToCatalog(){
   });
   if(n>0 && typeof spStoredInfo==='function') spStoredInfo();
   return n;
+}
+
+
+/* ===== Gộp thủ công từng nhóm nghi trùng (nút "Gộp nhóm này") ===== */
+function mergeGroupManual(gi){
+  if(userData.mode!=='owner'){ alert('🔒 Chỉ Chủ mới gộp được.'); return; }
+  var groups=buildMergeGroups();
+  var g=groups[gi];
+  if(!g){ renderMergeReview(); return; }
+  var keep=(g.key in mergeChoice)?mergeChoice[g.key]:pickDefaultKeep(g.idxs);
+  if(g.idxs.indexOf(keep)<0){ keep=pickDefaultKeep(g.idxs); }
+  var keepProd=appData.s[keep];
+  if(!keepProd){ alert('Không tìm thấy sản phẩm giữ lại.'); return; }
+  var others=g.idxs.filter(function(i){return i!==keep;});
+  if(!others.length){ alert('Nhóm chỉ có 1 mã, không cần gộp.'); return; }
+  var removed=others.map(function(i){return {c:appData.s[i].c, n:appData.s[i].n, t:appData.s[i].t||0};});
+  var names=removed.map(function(r){return '• '+r.n+' ('+r.c+')';}).join('\n');
+  if(!confirm('Gộp '+removed.length+' mã vào SẢN PHẨM GIỮ LẠI:\n'+keepProd.n+'  [mã: '+keepProd.c+']\n\nCác mã sau sẽ thành alias + cộng dồn tồn rồi ẩn khỏi danh mục:\n'+names)) return;
+  keepProd.a=keepProd.a||[];
+  removed.forEach(function(r){ if(r.c && keepProd.a.indexOf(r.c)<0) keepProd.a.push(r.c); if(r.n && keepProd.a.indexOf(r.n)<0) keepProd.a.push(r.n); keepProd.t=(keepProd.t||0)+(r.t||0); });
+  var rmCodes=removed.map(function(r){return r.c;});
+  appData.s=appData.s.filter(function(p){ return rmCodes.indexOf(p.c)<0; });
+  var mg=[]; try{ mg=JSON.parse(localStorage.getItem('spMerges')||'[]'); }catch(e){ mg=[]; }
+  mg.push({keep:keepProd.c, removed:removed});
+  localStorage.setItem('spMerges', JSON.stringify(mg));
+  delete mergeChoice[g.key];
+  renderMergeReview();
+  alert('✅ Đã gộp '+removed.length+' mã vào '+keepProd.c+'. Tồn cộng dồn = '+keepProd.t+'. Mã cũ giữ làm alias (tìm vẫn ra). Đã lưu, mở lại vẫn giữ.');
+}
+function loadSpMerges(){
+  var mg; try{ mg=JSON.parse(localStorage.getItem('spMerges')||'[]'); }catch(e){ return; }
+  if(!mg||!mg.length) return;
+  mg.forEach(function(rec){
+    var keepProd=appData.s.find(function(p){return p.c===rec.keep;});
+    var rmCodes=(rec.removed||[]).map(function(r){return r.c;});
+    if(keepProd){ keepProd.a=keepProd.a||[]; (rec.removed||[]).forEach(function(r){ if(r.c&&keepProd.a.indexOf(r.c)<0)keepProd.a.push(r.c); if(r.n&&keepProd.a.indexOf(r.n)<0)keepProd.a.push(r.n); keepProd.t=(keepProd.t||0)+(r.t||0); }); }
+    appData.s=appData.s.filter(function(p){ return rmCodes.indexOf(p.c)<0; });
+  });
 }
 
 </script>
