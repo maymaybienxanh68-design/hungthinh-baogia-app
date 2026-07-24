@@ -3285,7 +3285,7 @@ function _bgContentHtml(){
     +'<tr><td colspan="'+pre+'" class="r b sum">TỔNG CỘNG THANH TOÁN</td><td class="r b sum">'+_fmtVN(grand)+'</td><td class="sum"></td></tr>';
   var head='<th class="c">STT</th><th>Tên hàng hóa dịch vụ</th>'+(hasDesc?'<th>Mô tả sản phẩm</th>':'')
     +'<th class="c">ĐVT</th><th class="c">Số lượng</th><th class="c">Đơn giá (VNĐ)</th><th class="c">Thành tiền (VNĐ)</th><th class="c">Ghi chú</th>';
-  var luu=['Đơn giá trên là giá chưa bao gồm thuế GTGT.','Bên bán có trách nhiệm xuất hóa đơn GTGT cho bên mua.',
+  var luu=[(vat>0?'Đơn giá trên là giá đã bao gồm Thuế GTGT.':'Đơn giá trên là giá chưa bao gồm Thuế GTGT.'),'Bên bán có trách nhiệm xuất hóa đơn GTGT cho bên mua.',
     'Giao hàng: Theo thỏa thuận.','Thanh toán: Theo thỏa thuận.','Báo giá có hiệu lực trong vòng 15 ngày kể từ ngày báo giá.']
     .map(function(t,i){return '<div>'+(i+1)+'/ '+t+'</div>';}).join('');
   var nItems=items.length;
