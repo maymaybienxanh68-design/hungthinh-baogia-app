@@ -3365,7 +3365,7 @@ function printBaoGiaOffline(){
   host.style.cssText='position:fixed;left:0;top:0;width:780px;background:#fff;z-index:1;'; host.innerHTML=d.inner;
   document.body.appendChild(host);
   function _clean(){ try{document.body.removeChild(host);}catch(e){} try{document.body.removeChild(ov);}catch(e){} }
-  setTimeout(function(){
+  function _run(){
     var oh=host.offsetHeight;
     var w=html2pdf().from(host).set({image:{type:'jpeg',quality:0.96},html2canvas:{scale:(_isMob?1.6:2),useCORS:true,backgroundColor:'#ffffff',width:780,height:oh,windowWidth:780,windowHeight:oh},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}});
     w.toCanvas().then(function(){
@@ -3397,7 +3397,12 @@ function printBaoGiaOffline(){
         } else { pdf.save(_fn); _clean(); }
       });
     }).catch(function(e){ _clean(); alert('Lỗi tạo PDF: '+(e&&e.message||e)); });
-  }, 250);
+  }
+  /* Chờ TẤT CẢ ảnh (logo, QR, con dấu, chữ ký) tải xong rồi mới chụp — tránh logo/dấu bị cắt nửa khi máy yếu chưa kịp vẽ */
+  var _imgs=Array.prototype.slice.call(host.querySelectorAll('img'));
+  var _pending=_imgs.filter(function(im){return !(im.complete && im.naturalWidth>0);});
+  if(!_pending.length){ setTimeout(_run,150); }
+  else{ var _left=_pending.length,_fired=false; var _go=function(){ if(_fired)return; _fired=true; setTimeout(_run,150); }; _pending.forEach(function(im){ im.addEventListener('load',function(){ if(--_left<=0)_go(); }); im.addEventListener('error',function(){ if(--_left<=0)_go(); }); }); setTimeout(_go,3000); }
 }
 
 
