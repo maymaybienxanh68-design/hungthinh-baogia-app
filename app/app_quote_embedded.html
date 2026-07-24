@@ -3289,8 +3289,8 @@ function _bgContentHtml(){
     'Giao hàng: Theo thỏa thuận.','Thanh toán: Theo thỏa thuận.','Báo giá có hiệu lực trong vòng 15 ngày kể từ ngày báo giá.']
     .map(function(t,i){return '<div>'+(i+1)+'/ '+t+'</div>';}).join('');
   var nItems=items.length;
-  var rowPad = nItems<=1 ? 22 : nItems<=3 ? 16 : nItems<=6 ? 11 : nItems<=9 ? 8 : nItems<=14 ? 6 : nItems<=20 ? 4 : 3;
-  var tblFont = nItems<=9 ? 15 : nItems<=14 ? 14 : nItems<=20 ? 13 : 12;
+  var rowPad = nItems<=1 ? 16 : nItems<=3 ? 12 : nItems<=6 ? 9 : nItems<=9 ? 7 : nItems<=14 ? 5 : nItems<=20 ? 4 : 3;
+  var tblFont = nItems<=6 ? 15 : nItems<=9 ? 14 : nItems<=14 ? 13 : nItems<=20 ? 12 : 11;
   var css='#htbg{color:#000;font-family:"Times New Roman",serif;font-size:15px;background:#fff;padding:8px 12px;width:780px;}'
     +'#htbg *{box-sizing:border-box;font-family:"Times New Roman",serif;}'
     +'#htbg .hd{display:flex;align-items:center;gap:14px;border-bottom:2px solid #333;padding-bottom:8px;}'
@@ -3339,9 +3339,11 @@ function printBaoGiaOffline(){
     w.toCanvas().then(function(){
       var c=w.prop.canvas;
       return w.toPdf().then(function(){
-        var pdf=w.prop.pdf, pageW=210, pageH=297, margin=8, imgW=pageW-2*margin, imgH=c.height*imgW/c.width, contentH=pageH-2*margin, tot=pdf.internal.getNumberOfPages();
-        if(imgH<=contentH){ pdf.addPage(); pdf.addImage(c.toDataURL('image/jpeg',0.96),'JPEG',margin,margin,imgW,imgH); }
-        else{ var pxPerMM=c.width/imgW, sliceH=Math.floor(contentH*pxPerMM), pos=0; var sc=c.height/oh; var signEl=host.querySelector('.sign'); var breakY=signEl?Math.round(signEl.offsetTop*sc):-1; while(pos<c.height){ var hh=Math.min(sliceH,c.height-pos); if(breakY>pos+2 && breakY<pos+hh && (pos+hh)<c.height){ hh=breakY-pos; } if(hh<=0){ hh=Math.min(sliceH,c.height-pos); } var t=document.createElement('canvas'); t.width=c.width; t.height=hh; var tx=t.getContext('2d'); tx.fillStyle='#ffffff'; tx.fillRect(0,0,c.width,hh); tx.drawImage(c,0,pos,c.width,hh,0,0,c.width,hh); pdf.addPage(); pdf.addImage(t.toDataURL('image/jpeg',0.96),'JPEG',margin,margin,imgW,hh/pxPerMM); pos+=hh; } }
+        var pdf=w.prop.pdf, pageW=210, pageH=297, margin=8, maxW=pageW-2*margin, maxH=pageH-2*margin, tot=pdf.internal.getNumberOfPages();
+        var imgW=maxW, imgH=c.height*imgW/c.width;
+        if(imgH>maxH){ imgH=maxH; imgW=c.width*imgH/c.height; }  /* dài quá 1 trang -> thu nhỏ vừa khít, KHÔNG cắt (con dấu luôn còn) */
+        var x=(pageW-imgW)/2, y=margin;
+        pdf.addPage(); pdf.addImage(c.toDataURL('image/jpeg',0.96),'JPEG',x,y,imgW,imgH);
         for(var i=tot;i>=1;i--) pdf.deletePage(i);
         pdf.save('BaoGia_'+d.name+'.pdf'); _clean();
       });
