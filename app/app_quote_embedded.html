@@ -51,13 +51,37 @@ input[type="number"] { width: 80px; }
 .addr-slip .fld .vname { font-size: 28px; font-weight: bold; }
 .addr-slip .divider { border-top: 2px dashed #666; margin: 18px 0; }
 .kh-results div:hover { background: #f0f0f0; }
+
+/* ===== GIAO DIỆN GỌN + NỀN XANH (giống logo) + MOBILE — 2026-07-24 ===== */
+body{ background:linear-gradient(160deg,#123f63 0%,#1f5c8a 50%,#2c7fb8 100%); background-attachment:fixed; }
+header{ background:#0f3554; }
+header h1{ font-size:20px; }
+header p{ font-size:12px; opacity:.9; }
+.container{ padding:12px; }
+.card{ box-shadow:0 3px 12px rgba(0,0,0,.20); }
+.tabs{ flex-wrap:wrap; gap:4px; border-bottom:2px solid #d9e6f2; }
+.tab-btn{ padding:9px 12px; font-size:13px; border-radius:6px 6px 0 0; }
+.tab-btn.active{ background:#eaf3fb; }
+@media (max-width:640px){
+  header h1{ font-size:17px; }
+  header p{ font-size:11px; }
+  .container{ padding:8px; }
+  .card{ padding:14px; border-radius:10px; margin-bottom:14px; }
+  .tabs{ gap:3px; }
+  .tab-btn{ padding:8px 10px; font-size:12px; margin:0; }
+  h2{ font-size:17px; }
+  h3{ font-size:15px; }
+  label{ font-size:13px; }
+  input,select,textarea{ font-size:15px; }
+  table{ display:block; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch; }
+}
 </style>
 </head>
 <body>
 
 <header>
   <h1>🏭 HƯNG THỊNH SMART</h1>
-  <p>Tra cứu & Báo giá (100% Offline)</p>
+  <p>Tra cứu · Báo giá · Offline</p>
 </header>
 
 <div class="container">
@@ -118,12 +142,12 @@ input[type="number"] { width: 80px; }
           <input type="date" id="quoteDate">
         </div>
         <div class="form-group" style="position:relative;">
-          <label>🔎 Chọn khách có sẵn (bấm tên là tự điền Tên/Địa chỉ/SĐT):</label>
+          <label>🔎 Chọn khách có sẵn:</label>
           <input type="text" id="quoteKhSearch" placeholder="Gõ tên hoặc SĐT khách..." autocomplete="off" oninput="khPickerSearch('quote')" onfocus="khPickerSearch('quote')">
           <div id="quoteKhResults" class="kh-results" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid #ccc;width:100%;max-height:240px;overflow:auto;"></div>
         </div>
         <div class="form-group" style="position:relative;">
-          <label>Kính gửi (Tên khách) — gõ tên là tự gợi ý:</label>
+          <label>Kính gửi (tên khách):</label>
           <input type="text" id="customerName" placeholder="Gõ tên khách, vd: hà nội / giovani..." autocomplete="off" oninput="khNameSearch()" onfocus="khNameSearch()">
           <div id="customerNameResults" class="kh-results" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid #ccc;width:100%;max-height:240px;overflow:auto;"></div>
         </div>
@@ -138,7 +162,7 @@ input[type="number"] { width: 80px; }
 
         <h3>Thêm sản phẩm</h3>
         <div class="form-group" style="max-width:280px;">
-          <label>Thuế GTGT (%) — luôn mặc định 8, sửa được:</label>
+          <label>Thuế GTGT (%):</label>
           <input type="number" id="quoteVat" value="8" min="0" step="0.5">
         </div>
         <div style="display: grid; grid-template-columns: 1fr 100px 1fr; gap: 10px;">
@@ -147,7 +171,7 @@ input[type="number"] { width: 80px; }
           <div id="searchAddResults" style="position: absolute; background: white; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; width: 300px; z-index: 10; display: none;"></div>
         </div>
         <div style="margin-top:12px;border:1px dashed #9db8d6;border-radius:8px;padding:10px;background:#f7fbff;">
-          <div style="font-weight:bold;color:#1f5c8a;cursor:pointer;" onclick="var b=document.getElementById('spAddBody');b.style.display=(b.style.display==='none'?'block':'none');">➕ Tự thêm sản phẩm mới (gõ tay hoặc nhập Excel) — bấm để mở/đóng</div>
+          <div style="font-weight:bold;color:#1f5c8a;cursor:pointer;" onclick="var b=document.getElementById('spAddBody');b.style.display=(b.style.display==='none'?'block':'none');">➕ Tự thêm sản phẩm mới</div>
           <div id="spAddBody" style="display:none;margin-top:10px;">
             <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;">
               <input type="text" id="sp_new_ten" placeholder="Tên sản phẩm *">
@@ -171,7 +195,7 @@ input[type="number"] { width: 80px; }
         <button class="secondary" onclick="clearQuote()">Xóa báo giá</button>
 
         <h3 style="margin-top: 20px;">Danh sách hàng</h3>
-        <button onclick="addBlankQuoteItem()" style="background:#0277bd;margin-bottom:8px;">➕ Thêm dòng trống (tự nhập tất cả)</button>
+        <button onclick="addBlankQuoteItem()" style="background:#0277bd;margin-bottom:8px;">➕ Thêm dòng trống</button>
         <table class="quote-table" id="quoteTable">
           <thead id="quoteHead"></thead>
           <tbody id="quoteBody">
@@ -3325,6 +3349,9 @@ function printBaoGiaOffline(){
   try{ syncNewProductsToCatalog(); }catch(e){}
   try{ autoArchiveQuote(); }catch(e){}
   var d=_bgContentHtml();
+  var _isMob=/Android|webOS|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'');
+  var _preWin=_isMob?window.open('','_blank'):null;
+  if(_preWin){ try{ _preWin.document.write('<!doctype html><meta name=viewport content="width=device-width,initial-scale=1"><p style="font:16px -apple-system,Arial,sans-serif;padding:24px;color:#1f5c8a">\u23F3 Đang tạo PDF báo giá, vui lòng chờ...</p>'); }catch(e){} }
   var ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(255,255,255,.98);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-size:20px;color:#1e7e34;font-weight:bold;';
   ov.textContent='⏳ Đang tạo PDF báo giá...';
@@ -3335,7 +3362,7 @@ function printBaoGiaOffline(){
   function _clean(){ try{document.body.removeChild(host);}catch(e){} try{document.body.removeChild(ov);}catch(e){} }
   setTimeout(function(){
     var oh=host.offsetHeight;
-    var w=html2pdf().from(host).set({image:{type:'jpeg',quality:0.96},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',width:780,height:oh,windowWidth:780,windowHeight:oh},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}});
+    var w=html2pdf().from(host).set({image:{type:'jpeg',quality:0.96},html2canvas:{scale:(_isMob?1.6:2),useCORS:true,backgroundColor:'#ffffff',width:780,height:oh,windowWidth:780,windowHeight:oh},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}});
     w.toCanvas().then(function(){
       var c=w.prop.canvas;
       return w.toPdf().then(function(){
@@ -3345,7 +3372,7 @@ function printBaoGiaOffline(){
         var x=(pageW-imgW)/2, y=margin;
         pdf.addPage(); pdf.addImage(c.toDataURL('image/jpeg',0.96),'JPEG',x,y,imgW,imgH);
         for(var i=tot;i>=1;i--) pdf.deletePage(i);
-        pdf.save('BaoGia_'+d.name+'.pdf'); _clean();
+        var _fn='BaoGia_'+d.name+'.pdf'; try{ if(_isMob){ var _u=pdf.output('bloburl'); if(_preWin && !_preWin.closed){ _preWin.location.href=_u; } else { var _a=document.createElement('a'); _a.href=_u; _a.download=_fn; _a.target='_blank'; document.body.appendChild(_a); _a.click(); _a.remove(); } } else { pdf.save(_fn); } }catch(_e){ try{ pdf.save(_fn); }catch(_e2){ if(_preWin&&!_preWin.closed){try{_preWin.close();}catch(_){}} alert('Thiết bị không tạo được PDF: '+(_e2&&_e2.message||_e2)); } } _clean();
       });
     }).catch(function(e){ _clean(); alert('Lỗi tạo PDF: '+(e&&e.message||e)); });
   }, 250);
