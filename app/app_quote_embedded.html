@@ -38,18 +38,18 @@ input[type="number"] { width: 80px; }
 
 /* ===== Phiếu địa chỉ / in ấn ===== */
 #printArea { position: fixed; left: -10000px; top: 0; }
-@page { size: A5; margin: 0; }
+@page { size: A4; margin: 0; }
 @media print {
   body * { visibility: hidden; }
   #printArea, #printArea * { visibility: visible; }
   #printArea { position: absolute; left: 0; top: 0; width: 100%; }
 }
-.addr-slip { border: 2px solid #000; border-radius: 6px; padding: 10mm; margin: 7mm auto; width: 133mm; min-height: 185mm; box-sizing: border-box; font-family: Arial, sans-serif; page-break-inside: avoid; }
-.addr-slip .hdr { font-size: 23px; font-weight: bold; margin: 8px 0 6px; text-transform: uppercase; }
-.addr-slip .fld { font-size: 16px; margin: 5px 0; line-height: 1.5; }
+.addr-slip { border: 2px solid #000; border-radius: 8px; padding: 14mm; margin: 8mm auto; width: 194mm; min-height: 277mm; box-sizing: border-box; font-family: Arial, sans-serif; page-break-inside: avoid; }
+.addr-slip .hdr { font-size: 32px; font-weight: bold; margin: 10px 0 8px; text-transform: uppercase; }
+.addr-slip .fld { font-size: 22px; margin: 8px 0; line-height: 1.55; }
 .addr-slip .fld .k { font-weight: bold; }
-.addr-slip .fld .vname { font-size: 19px; font-weight: bold; }
-.addr-slip .divider { border-top: 2px dashed #666; margin: 14px 0; }
+.addr-slip .fld .vname { font-size: 28px; font-weight: bold; }
+.addr-slip .divider { border-top: 2px dashed #666; margin: 18px 0; }
 .kh-results div:hover { background: #f0f0f0; }
 </style>
 </head>
