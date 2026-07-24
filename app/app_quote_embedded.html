@@ -3373,14 +3373,18 @@ function printBaoGiaOffline(){
         var _fn='BaoGia_'+d.name+'.pdf';
         if(_isMob){
           try{
+            var _imgData=c.toDataURL('image/jpeg',0.95);
             var _blob=pdf.output('blob'); var _url=URL.createObjectURL(_blob);
             _clean();
             var _res=document.createElement('div');
-            _res.style.cssText='position:fixed;inset:0;background:#0f3554;z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;font-family:-apple-system,Arial,sans-serif;';
-            var _t=document.createElement('div'); _t.style.cssText='color:#fff;font-size:18px;font-weight:bold;'; _t.textContent='\u2705 \u0110\u00e3 t\u1ea1o b\u00e1o gi\u00e1 PDF'; _res.appendChild(_t);
-            var _h=document.createElement('div'); _h.style.cssText='color:#cfe0ef;font-size:14px;max-width:320px;line-height:1.5;'; _h.textContent='B\u1ea5m n\u00fat b\u00ean d\u01b0\u1edbi \u0111\u1ec3 m\u1edf PDF, r\u1ed3i b\u1ea5m n\u00fat Chia s\u1ebb \u2191 \u0111\u1ec3 L\u01b0u v\u00e0o T\u1ec7p / g\u1eedi Zalo.'; _res.appendChild(_h);
-            var _a=document.createElement('a'); _a.href=_url; _a.target='_blank'; _a.rel='noopener'; _a.setAttribute('download',_fn); _a.textContent='\ud83d\udcc4 M\u1edf / T\u1ea3i PDF'; _a.style.cssText='background:#27ae60;color:#fff;padding:16px 30px;border-radius:10px;font-size:18px;font-weight:bold;text-decoration:none;'; _res.appendChild(_a);
-            var _cl=document.createElement('button'); _cl.textContent='\u0110\u00f3ng'; _cl.style.cssText='background:#888;color:#fff;padding:12px 24px;border:none;border-radius:8px;font-size:15px;'; _cl.onclick=function(){ try{URL.revokeObjectURL(_url);}catch(e){} try{document.body.removeChild(_res);}catch(e){} }; _res.appendChild(_cl);
+            _res.style.cssText='position:fixed;inset:0;background:#0f3554;z-index:2147483647;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px;text-align:center;font-family:-apple-system,Arial,sans-serif;';
+            var _t=document.createElement('div'); _t.style.cssText='color:#fff;font-size:17px;font-weight:bold;margin-bottom:4px;'; _t.textContent='\u2705 \u0110\u00e3 t\u1ea1o b\u00e1o gi\u00e1'; _res.appendChild(_t);
+            var _h=document.createElement('div'); _h.style.cssText='color:#cfe0ef;font-size:13px;line-height:1.55;margin-bottom:12px;'; _h.innerHTML='\ud83d\udccc <b>Nh\u1ea5n GI\u1eEE</b> v\u00e0o \u1ea3nh b\u00ean d\u01b0\u1edbi \u2192 ch\u1ecdn <b>L\u01b0u \u1ea3nh</b> \u0111\u1ec3 g\u1eedi Zalo.<br>Ho\u1eb7c b\u1ea5m <b>M\u1edf/T\u1ea3i PDF</b> (khi m\u1edf b\u1eb1ng Safari/Chrome).'; _res.appendChild(_h);
+            var _bar=document.createElement('div'); _bar.style.cssText='display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;';
+            var _a=document.createElement('a'); _a.href=_url; _a.target='_blank'; _a.rel='noopener'; _a.setAttribute('download',_fn); _a.textContent='\ud83d\udcc4 M\u1edf/T\u1ea3i PDF'; _a.style.cssText='background:#27ae60;color:#fff;padding:12px 20px;border-radius:8px;font-size:15px;font-weight:bold;text-decoration:none;'; _bar.appendChild(_a);
+            var _cl=document.createElement('button'); _cl.textContent='\u0110\u00f3ng'; _cl.style.cssText='background:#888;color:#fff;padding:12px 20px;border:none;border-radius:8px;font-size:15px;'; _cl.onclick=function(){ try{URL.revokeObjectURL(_url);}catch(e){} try{document.body.removeChild(_res);}catch(e){} }; _bar.appendChild(_cl);
+            _res.appendChild(_bar);
+            var _img=document.createElement('img'); _img.src=_imgData; _img.style.cssText='width:100%;max-width:540px;border-radius:6px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.4);'; _res.appendChild(_img);
             document.body.appendChild(_res);
           }catch(_e){ _clean(); alert('Thi\u1ebft b\u1ecb kh\u00f4ng t\u1ea1o \u0111\u01b0\u1ee3c PDF: '+(_e&&_e.message||_e)); }
         } else { pdf.save(_fn); _clean(); }
