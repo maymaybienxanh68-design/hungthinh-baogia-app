@@ -38,16 +38,18 @@ input[type="number"] { width: 80px; }
 
 /* ===== Phiếu địa chỉ / in ấn ===== */
 #printArea { position: fixed; left: -10000px; top: 0; }
+@page { size: A5; margin: 0; }
 @media print {
   body * { visibility: hidden; }
   #printArea, #printArea * { visibility: visible; }
   #printArea { position: absolute; left: 0; top: 0; width: 100%; }
 }
-.addr-slip { border: 2px solid #000; border-radius: 6px; padding: 16px; margin: 0 auto 14px auto; max-width: 520px; font-family: Arial, sans-serif; page-break-inside: avoid; }
-.addr-slip .lbl { font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 1px; }
-.addr-slip .r-name { font-size: 20px; font-weight: bold; margin: 2px 0; }
-.addr-slip .r-line { font-size: 15px; margin: 2px 0; }
-.addr-slip .sender { margin-top: 12px; padding-top: 8px; border-top: 1px dashed #888; font-size: 13px; color: #333; }
+.addr-slip { border: 2px solid #000; border-radius: 6px; padding: 10mm; margin: 7mm auto; width: 133mm; min-height: 185mm; box-sizing: border-box; font-family: Arial, sans-serif; page-break-inside: avoid; }
+.addr-slip .hdr { font-size: 23px; font-weight: bold; margin: 8px 0 6px; text-transform: uppercase; }
+.addr-slip .fld { font-size: 16px; margin: 5px 0; line-height: 1.5; }
+.addr-slip .fld .k { font-weight: bold; }
+.addr-slip .fld .vname { font-size: 19px; font-weight: bold; }
+.addr-slip .divider { border-top: 2px dashed #666; margin: 14px 0; }
 .kh-results div:hover { background: #f0f0f0; }
 </style>
 </head>
@@ -3098,13 +3100,16 @@ function printAddrSlip() {
   if (!rTen && !rSdt && !rDc) { alert('❌ Chưa có thông tin người nhận.'); return; }
   let copies = parseInt(document.getElementById('addr_copies').value) || 1;
   let one = '<div class="addr-slip">' +
-    '<div class="lbl">Người nhận</div>' +
-    '<div class="r-name">' + escapeHtml(rTen) + '</div>' +
-    '<div class="r-line">📞 ' + escapeHtml(rSdt) + '</div>' +
-    '<div class="r-line">📍 ' + escapeHtml(rDc) + '</div>' +
-    '<div class="sender"><div class="lbl">Người gửi</div>' +
-    '<div><strong>' + escapeHtml(sTen) + '</strong>' + (sSdt ? ' · ' + escapeHtml(sSdt) : '') + '</div>' +
-    '<div>' + escapeHtml(sDc) + '</div></div></div>';
+    '<div class="hdr">📤 Người gửi:</div>' +
+    '<div class="fld"><span class="k">Tên:</span> <span class="v vname">' + escapeHtml(sTen) + '</span></div>' +
+    '<div class="fld"><span class="k">Địa chỉ:</span> <span class="v">' + escapeHtml(sDc) + '</span></div>' +
+    '<div class="fld"><span class="k">SĐT:</span> <span class="v">' + escapeHtml(sSdt) + '</span></div>' +
+    '<div class="divider"></div>' +
+    '<div class="hdr">📥 Người nhận:</div>' +
+    '<div class="fld"><span class="k">Tên:</span> <span class="v vname">' + escapeHtml(rTen) + '</span></div>' +
+    '<div class="fld"><span class="k">Địa chỉ:</span> <span class="v">' + escapeHtml(rDc) + '</span></div>' +
+    '<div class="fld"><span class="k">SĐT:</span> <span class="v">' + escapeHtml(rSdt) + '</span></div>' +
+    '</div>';
   let all = '';
   for (let i = 0; i < copies; i++) all += one;
   let pa = document.getElementById('printArea');
