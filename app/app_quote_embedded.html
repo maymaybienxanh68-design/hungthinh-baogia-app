@@ -173,29 +173,10 @@ input[type="number"] { width: 80px; }
         <h3 style="margin-top: 20px;">Danh sách hàng</h3>
         <button onclick="addBlankQuoteItem()" style="background:#0277bd;margin-bottom:8px;">➕ Thêm dòng trống (tự nhập tất cả)</button>
         <table class="quote-table" id="quoteTable">
-          <thead>
-            <tr>
-              <th>STT</th>
-              <th>Tên sản phẩm</th>
-              <th>Mô tả</th>
-              <th>Ảnh</th>
-              <th>ĐVT</th>
-              <th>SL</th>
-              <th>Đơn giá</th>
-              <th>Thành tiền</th>
-              <th>Ghi chú</th>
-              <th></th>
-            </tr>
-          </thead>
+          <thead id="quoteHead"></thead>
           <tbody id="quoteBody">
           </tbody>
-          <tfoot>
-            <tr class="total-row">
-              <td colspan="7">TỔNG CỘNG</td>
-              <td class="text-right" id="totalAmount">0</td>
-              <td colspan="2"></td>
-            </tr>
-          </tfoot>
+          <tfoot id="quoteFoot"></tfoot>
         </table>
 
         <button onclick="saveQuote()">💾 Lưu báo giá</button>
@@ -2124,6 +2105,7 @@ function selectProduct(idx) {
     code: product.c,
     unit: product.u,
     qty: 1,
+    cost: product.v || 0,
     price: product.p,
     note: '',
     // Nếu kho dữ liệu đã có sẵn mô tả/ảnh cho sản phẩm này thì tự điền vào,
@@ -2142,30 +2124,53 @@ function addToQuote() {
 }
 
 function updateQuoteTable() {
+  var owner = (typeof userData!=='undefined' && userData.mode==='owner');
+  var head = document.getElementById('quoteHead');
+  if (head) {
+    head.innerHTML = '<tr><th>STT</th><th>Tên sản phẩm</th><th>Mô tả</th><th>Ảnh</th><th>ĐVT</th><th>SL</th>'
+      + (owner ? '<th>Giá gốc</th>' : '')
+      + '<th>Giá bán</th><th>Thành tiền</th>'
+      + (owner ? '<th>Lợi nhuận</th><th>% LN</th>' : '')
+      + '<th>Ghi chú</th><th></th></tr>';
+  }
   let tbody = document.getElementById('quoteBody');
-  tbody.innerHTML = quoteData.items.map((item, itemIdx) => `
-    <tr>
-      <td>${itemIdx + 1}</td>
-      <td><input type="text" value="${escapeHtml(item.name)}" onchange="updateItem(${itemIdx}, 'name', this.value)" placeholder="Tên sản phẩm" style="width:160px;font-size:12px;"></td>
-      <td><textarea rows="2" style="width:160px;font-size:12px;" placeholder="Nhập mô tả (nếu mẫu chưa có sẵn)" onchange="updateItem(${itemIdx}, 'description', this.value)">${escapeHtml(item.description || '')}</textarea></td>
-      <td style="text-align:center;">
-        ${item.img ? `<img src="${item.img}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;display:block;margin:0 auto 4px;">` : ''}
-        <input type="file" accept="image/*" style="width:90px;font-size:11px;" onchange="handleImageUpload(${itemIdx}, this)">
-      </td>
-      <td><input type="text" value="${escapeHtml(item.unit)}" onchange="updateItem(${itemIdx}, 'unit', this.value)" placeholder="ĐVT" style="width:60px;font-size:12px;"></td>
-      <td><input type="number" value="${item.qty}" onchange="updateItem(${itemIdx}, 'qty', this.value)"></td>
-      <td><input type="number" value="${item.price}" onchange="updateItem(${itemIdx}, 'price', this.value)"></td>
-      <td class="text-right">${formatPrice(item.qty * item.price)}</td>
-      <td><input type="text" value="${escapeHtml(item.note)}" onchange="updateItem(${itemIdx}, 'note', this.value)"></td>
-      <td><button onclick="removeItem(${itemIdx})" style="background: #c0392b;">Xóa</button></td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = quoteData.items.map((item, itemIdx) => {
+    var cost = item.cost || 0, price = item.price || 0, qty = item.qty || 0;
+    var profit = (price - cost) * qty;
+    var pctTxt = cost > 0 ? (Math.round((price - cost) / cost * 100) + '%') : (price > 0 ? '—' : '0%');
+    var profColor = profit < 0 ? '#c0392b' : '#2e7d32';
+    return '<tr>'
+      + '<td>' + (itemIdx + 1) + '</td>'
+      + '<td><input type="text" value="' + escapeHtml(item.name) + '" onchange="updateItem(' + itemIdx + ', \'name\', this.value)" placeholder="Tên sản phẩm" style="width:150px;font-size:12px;"></td>'
+      + '<td><textarea rows="2" style="width:150px;font-size:12px;" placeholder="Mô tả" onchange="updateItem(' + itemIdx + ', \'description\', this.value)">' + escapeHtml(item.description || '') + '</textarea></td>'
+      + '<td style="text-align:center;">' + (item.img ? '<img src="' + item.img + '" style="width:50px;height:50px;object-fit:cover;border-radius:4px;display:block;margin:0 auto 4px;">' : '') + '<input type="file" accept="image/*" style="width:90px;font-size:11px;" onchange="handleImageUpload(' + itemIdx + ', this)"></td>'
+      + '<td><input type="text" value="' + escapeHtml(item.unit) + '" onchange="updateItem(' + itemIdx + ', \'unit\', this.value)" placeholder="ĐVT" style="width:55px;font-size:12px;"></td>'
+      + '<td><input type="number" value="' + qty + '" onchange="updateItem(' + itemIdx + ', \'qty\', this.value)" style="width:55px;"></td>'
+      + (owner ? ('<td><input type="number" value="' + cost + '" onchange="updateItem(' + itemIdx + ', \'cost\', this.value)" placeholder="Giá gốc" style="width:90px;background:#fff7e6;"></td>') : '')
+      + '<td><input type="number" value="' + price + '" onchange="updateItem(' + itemIdx + ', \'price\', this.value)" placeholder="Giá bán" style="width:90px;"></td>'
+      + '<td class="text-right">' + formatPrice(qty * price) + '</td>'
+      + (owner ? ('<td class="text-right" style="color:' + profColor + ';font-weight:bold;">' + formatPrice(profit) + '</td>') : '')
+      + (owner ? ('<td class="text-right" style="color:' + profColor + ';font-weight:bold;">' + pctTxt + '</td>') : '')
+      + '<td><input type="text" value="' + escapeHtml(item.note) + '" onchange="updateItem(' + itemIdx + ', \'note\', this.value)" style="width:80px;"></td>'
+      + '<td><button onclick="removeItem(' + itemIdx + ')" style="background: #c0392b;">Xóa</button></td>'
+      + '</tr>';
+  }).join('');
 
-  let total = quoteData.items.reduce((sum, item) => sum + (item.qty * item.price), 0);
-  document.getElementById('totalAmount').textContent = formatPrice(total);
+  let total = quoteData.items.reduce((sum, item) => sum + ((item.qty||0) * (item.price||0)), 0);
+  let totalProfit = quoteData.items.reduce((sum, item) => sum + (((item.price||0) - (item.cost||0)) * (item.qty||0)), 0);
+  let totalCost = quoteData.items.reduce((sum, item) => sum + ((item.cost||0) * (item.qty||0)), 0);
+  let totalPct = totalCost > 0 ? (Math.round(totalProfit / totalCost * 100) + '%') : '—';
+  var foot = document.getElementById('quoteFoot');
+  if (foot) {
+    var pc = totalProfit < 0 ? '#c0392b' : '#2e7d32';
+    foot.innerHTML = '<tr class="total-row"><td colspan="' + (owner ? 8 : 7) + '">TỔNG CỘNG</td>'
+      + '<td class="text-right" id="totalAmount">' + formatPrice(total) + '</td>'
+      + (owner ? ('<td class="text-right" style="color:' + pc + ';">' + formatPrice(totalProfit) + '</td><td class="text-right" style="color:' + pc + ';">' + totalPct + '</td>') : '')
+      + '<td colspan="2"></td></tr>';
+  } else {
+    var ta = document.getElementById('totalAmount'); if (ta) ta.textContent = formatPrice(total);
+  }
 
-  // Mẫu Excel chỉ có tối đa 8 dòng sản phẩm - cảnh báo nếu vượt quá,
-  // vì các sản phẩm thứ 9 trở đi sẽ KHÔNG được đưa vào file xuất
   let warnDiv = document.getElementById('quoteLimitWarning');
   if (!warnDiv) {
     warnDiv = document.createElement('div');
@@ -2184,6 +2189,7 @@ function updateQuoteTable() {
 
 function updateItem(idx, field, value) {
   if (field === 'qty') quoteData.items[idx].qty = parseInt(value) || 1;
+  if (field === 'cost') quoteData.items[idx].cost = parseInt(value) || 0;
   if (field === 'price') quoteData.items[idx].price = parseInt(value) || 0;
   if (field === 'note') quoteData.items[idx].note = value;
   if (field === 'description') quoteData.items[idx].description = value;
@@ -3088,7 +3094,7 @@ function delSender() {
   s.splice(i, 1); setSenders(s); renderSenderSelect();
 }
 
-function renderAddrTab() { renderSenderSelect(); khStoredSummary(); }
+function renderAddrTab() { renderSenderSelect(); khStoredSummary(); prefillPendingRecipient(); }
 
 function printAddrSlip() {
   let rTen = document.getElementById('addr_r_ten').value.trim();
@@ -3317,6 +3323,7 @@ function printBaoGiaOffline(){
   if(typeof quoteData==='undefined'||!quoteData.items||quoteData.items.length===0){ alert('❌ Chưa có sản phẩm trong báo giá'); return; }
   if(typeof html2pdf==='undefined'){ alert('Chưa tải được thư viện tạo PDF. Hãy tải lại trang.'); return; }
   try{ syncNewProductsToCatalog(); }catch(e){}
+  try{ autoArchiveQuote(); }catch(e){}
   var d=_bgContentHtml();
   var ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(255,255,255,.98);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-size:20px;color:#1e7e34;font-weight:bold;';
@@ -3342,6 +3349,67 @@ function printBaoGiaOffline(){
   }, 250);
 }
 
+
+
+/* ===== TỰ LƯU BÁO GIÁ + CHUYỂN SANG ĐƠN HÀNG / CSKH / PHIẾU GỬI (gọi khi Xuất PDF) ===== */
+function autoArchiveQuote(){
+  try{
+    var g=function(id){var e=document.getElementById(id);return e?e.value:'';};
+    var noEl=document.getElementById('quoteNo');
+    if(noEl && !noEl.value){ noEl.value='BG-'+Date.now(); }
+    quoteData.no = (noEl?noEl.value:'') || ('BG-'+Date.now());
+    quoteData.date = g('quoteDate');
+    quoteData.customer = g('customerName');
+    quoteData.address = g('customerAddress');
+    quoteData.phone = g('customerPhone');
+    var vat=parseFloat(g('quoteVat')); quoteData.vat = (vat>=0)?vat:8;
+    if(!quoteData.items || !quoteData.items.length) return;
+
+    /* 1) LƯU VÀO DANH SÁCH ĐÃ BÁO GIÁ — đầy đủ giá gốc/giá bán/lợi nhuận */
+    var sq=[]; try{ sq=JSON.parse(localStorage.getItem('savedQuotes')||'[]'); }catch(e){}
+    var snap=JSON.parse(JSON.stringify(quoteData));
+    var ei=sq.findIndex(function(x){return x.no===snap.no;});
+    if(ei>=0) sq[ei]=snap; else sq.push(snap);
+    try{ localStorage.setItem('savedQuotes', JSON.stringify(sq)); savedQuotes=sq; }
+    catch(e){ alert('⚠️ Đã xuất PDF nhưng KHÔNG lưu được vào danh sách (bộ nhớ đầy — ảnh sản phẩm nặng). Hãy xóa bớt báo giá cũ.'); }
+
+    /* 2) TẠO / CẬP NHẬT ĐƠN HÀNG từ báo giá này (theo fromQuote để không tạo trùng) */
+    try{
+      var ords=JSON.parse(localStorage.getItem('orders')||'[]');
+      var oitems=(snap.items||[]).map(function(it){return {name:it.name,code:it.code||'',qty:it.qty,price:it.price,cost:it.cost||0,note:it.note||''};});
+      var exist=ords.find(function(o){return o.fromQuote===snap.no;});
+      if(exist){ exist.items=oitems; exist.customer=snap.customer; exist.phone=snap.phone; exist.address=snap.address; }
+      else{ ords.unshift({ id:'DH-'+Date.now(), date:new Date().toISOString().slice(0,10), customer:snap.customer||'', phone:snap.phone||'', address:snap.address||'',
+        items:oitems, supplier:'', ship:'', eta:'', status:'moi', note:'Tự tạo từ báo giá '+snap.no, createdAt:new Date().toISOString(), fromQuote:snap.no }); }
+      localStorage.setItem('orders', JSON.stringify(ords));
+    }catch(e){}
+
+    /* 3) CHĂM SÓC KH: tự suy ra từ savedQuotes + orders (buildCustomers) — không cần thêm */
+
+    /* 4) PHIẾU GỬI: thêm khách vào danh sách người nhận + ghi nhớ để tự điền */
+    try{
+      if(snap.customer || snap.phone){
+        var kbg=JSON.parse(localStorage.getItem('khBGExtra')||'[]');
+        var keyNew=(snap.phone||'').replace(/[^0-9]/g,'')||normalizeVN(snap.customer||'');
+        var found=kbg.find(function(k){var kk=(k.sdt||'').replace(/[^0-9]/g,'')||normalizeVN(k.ten||''); return kk===keyNew;});
+        if(found){ if(snap.address) found.diachi=snap.address; if(snap.customer && snap.customer.length>(found.ten||'').length) found.ten=snap.customer; }
+        else kbg.push({ ten:snap.customer||'', sdt:snap.phone||'', diachi:snap.address||'' });
+        localStorage.setItem('khBGExtra', JSON.stringify(kbg));
+        if(typeof loadKhBGExtra==='function') loadKhBGExtra();
+        localStorage.setItem('pendingRecipient', JSON.stringify({ ten:snap.customer||'', sdt:snap.phone||'', diachi:snap.address||'' }));
+      }
+    }catch(e){}
+  }catch(e){}
+}
+function prefillPendingRecipient(){
+  try{
+    var p=JSON.parse(localStorage.getItem('pendingRecipient')||'null'); if(!p) return;
+    var t=document.getElementById('addr_r_ten'), s=document.getElementById('addr_r_sdt'), d=document.getElementById('addr_r_diachi');
+    if(t && !t.value && p.ten) t.value=p.ten;
+    if(s && !s.value && p.sdt) s.value=p.sdt;
+    if(d && !d.value && p.diachi) d.value=p.diachi;
+  }catch(e){}
+}
 
 /* Ẩn dropdown chọn khách khi bấm RA NGOÀI (thay onblur hay ẩn nhầm khi đang gõ) */
 document.addEventListener('mousedown', function(e){
@@ -3410,7 +3478,7 @@ function spStoredInfo(){ var d=document.getElementById('spStoredInfo'); if(d) d.
 
 /* ===== Tự nhập dòng mới + tự lưu sản phẩm mới của báo giá vào danh mục ===== */
 function addBlankQuoteItem(){
-  quoteData.items.push({ name:'', code:'', unit:'', qty:1, price:0, note:'', description:'', img:'' });
+  quoteData.items.push({ name:'', code:'', unit:'', qty:1, cost:0, price:0, note:'', description:'', img:'' });
   updateQuoteTable();
   // đưa con trỏ tới ô Tên của dòng mới cho dễ nhập
   setTimeout(function(){ var tb=document.getElementById('quoteBody'); if(tb){ var rows=tb.querySelectorAll('tr'); var last=rows[rows.length-1]; if(last){ var inp=last.querySelector('input[type=text]'); if(inp) inp.focus(); } } },50);
