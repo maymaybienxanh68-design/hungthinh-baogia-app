@@ -355,9 +355,14 @@ header p{ font-size:12px; opacity:.9; }
           <div style="flex:1;"><label style="font-size:12px;color:#666;">Giá gốc</label><input type="number" id="dsEditCost" style="width:100%;box-sizing:border-box;"></div>
           <div style="flex:1;"><label style="font-size:12px;color:#666;">Giá bán</label><input type="number" id="dsEditPrice" style="width:100%;box-sizing:border-box;"></div>
         </div>
-        <div style="margin-top:10px;display:flex;gap:8px;">
-          <button onclick="dsSaveManualEdit()" style="background:#1f5c8a;">💾 Lưu</button>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick="dsSaveManualEdit()" style="background:#1f5c8a;">💾 Lưu (chỉ lần này)</button>
+          <button onclick="dsSaveManualEditAndUpdateCatalog()" style="background:#27ae60;">🔄 Cập nhật vào kho</button>
           <button onclick="dsCloseAnyModal()" style="background:#888;">Đóng</button>
+        </div>
+        <div style="font-size:11.5px;color:#888;margin-top:8px;line-height:1.5;">
+          <b>Lưu:</b> chỉ áp dụng cho kết quả đối soát lần này, KHÔNG đổi kho sản phẩm.<br>
+          <b>Cập nhật vào kho:</b> lưu luôn vào kho sản phẩm (thêm mới hoặc thay thế thông tin cũ) + tự chuẩn hoá mã theo quy định (VIẾT HOA, không dấu, nối gạch) + ghi nhớ tên khách hay gọi để lần đối soát sau tự nhận đúng, không cần sửa lại.
         </div>
       </div>
       <div id="dsManualSearchOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9998;" onclick="dsCloseAnyModal()"></div>
@@ -3774,7 +3779,34 @@ function dsOpenManualEdit(type, idx){
   var nm=document.getElementById('dsEditName'); if(nm){ nm.focus(); nm.select(); }
 }
 
-function dsSaveManualEdit(){
+/* Chuẩn hoá mã theo quy định đã thống nhất: NHÓM-DÒNG-THÔNGSỐ VIẾT HOA không dấu, nối gạch (giống spMakeCode) */
+function dsNormalizeCode(s){
+  return normalizeVN(s||'').toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+}
+
+/* Lưu THẬT vào kho sản phẩm (appData.s + spExtra/localStorage) — thêm mới hoặc THAY THẾ bản cũ nếu trùng mã.
+   Đồng thời ghi nhớ tên khách hay gọi (alias) để lần đối soát sau tự nhận đúng, không cần sửa lại. */
+function dsUpdateCatalog(name, code, unit, cost, price, aliasRaw){
+  var ten=(name||'').trim(); if(!ten) return null;
+  var ma = dsNormalizeCode(code) || (typeof spMakeCode==='function' ? spMakeCode(ten) : ten.toUpperCase());
+  var ex = appData.s.find(function(x){ return x.c===ma; });
+  if(ex){
+    ex.n=ten; if(unit) ex.u=unit; ex.p=price||0; ex.v=cost||0;
+    ex.a = ex.a || [];
+    if(aliasRaw && ex.a.indexOf(aliasRaw)<0) ex.a.push(aliasRaw);
+  } else {
+    ex = { n:ten, c:ma, u:unit||'Cái', p:price||0, v:cost||0, t:0, a: aliasRaw?[aliasRaw]:[], img:'', desc:'' };
+    appData.s.push(ex);
+  }
+  if(typeof spExtra!=='undefined'){
+    spExtra = spExtra.filter(function(x){ return x.c!==ma; });
+    spExtra.push(ex);
+    if(typeof saveSpExtra==='function') saveSpExtra();
+  }
+  return ex;
+}
+
+function dsApplyEditForm(persist){
   if(!_dsEditingRow || !_dsLastResult) return;
   var name=(document.getElementById('dsEditName').value||'').trim();
   if(!name){ alert('❌ Nhập tên sản phẩm.'); return; }
@@ -3783,18 +3815,29 @@ function dsSaveManualEdit(){
   var cost=parseFloat(document.getElementById('dsEditCost').value)||0;
   var price=parseFloat(document.getElementById('dsEditPrice').value)||0;
   var res=_dsLastResult, type=_dsEditingRow.type, idx=_dsEditingRow.idx;
+  var rawCustomerName = (type==='m' ? res.matched[idx] : res.unmatched[idx]).customerName;
+
+  if(persist){
+    var saved = dsUpdateCatalog(name, code, unit, cost, price, rawCustomerName);
+    if(saved){ name=saved.n; code=saved.c; unit=saved.u; cost=saved.v; price=saved.p; }
+  }
+
   if(type==='m'){
     var m=res.matched[idx]; if(!m) return;
     m.ourName=name; m.code=code; m.unit=unit; m.cost=cost; m.price=price; m.suppliers=m.suppliers||[]; m._manual=true;
+    if(persist) m._catalogUpdated=true;
   } else {
     var u=res.unmatched[idx]; if(!u) return;
-    var newM={ customerName:u.customerName, ourName:name, code:code, unit:unit, cost:cost, price:price, suppliers:[], score:1, _manual:true };
+    var newM={ customerName:u.customerName, ourName:name, code:code, unit:unit, cost:cost, price:price, suppliers:[], score:1, _manual:true, _catalogUpdated:!!persist };
     res.unmatched.splice(idx,1);
     res.matched.push(newM);
   }
   dsCloseAnyModal();
   dsRenderResult(res);
+  if(persist) alert('✅ Đã cập nhật vào kho sản phẩm. Lần đối soát sau, tên khách gửi "'+rawCustomerName+'" sẽ tự nhận đúng — không cần sửa lại.');
 }
+function dsSaveManualEdit(){ dsApplyEditForm(false); }
+function dsSaveManualEditAndUpdateCatalog(){ dsApplyEditForm(true); }
 
 /* ---- 📋 BÁO GIÁ: thêm vào phiếu báo giá đang soạn (dùng lại sản phẩm trong kho nếu có, hoặc thêm thẳng nếu là SP tự nhập tay) ---- */
 function dsAddToQuote(type, idx){
@@ -3850,7 +3893,7 @@ function dsRenderResult(res){
     res.matched.forEach(function(m,i){
       var supHtml = m.suppliers.length ? m.suppliers.map(function(s,si){ return (si+1)+'. '+escapeHtml(s.ncc)+': <b>'+formatPrice(s.gia)+'</b>'; }).join('<br>') : '<span style="color:#999;">(chưa có dữ liệu NCC)</span>';
       var dimStyle = m._added ? ' style="opacity:.5;"' : '';
-      html+='<tr'+dimStyle+'><td>'+escapeHtml(m.customerName)+'</td><td>'+escapeHtml(m.ourName)+'<br><code style="font-size:11px;color:#888;">'+escapeHtml(m.code)+'</code></td>'
+      html+='<tr'+dimStyle+'><td>'+escapeHtml(m.customerName)+'</td><td>'+escapeHtml(m.ourName)+(m._catalogUpdated?' <span style="color:#27ae60;font-size:11px;" title="Đã lưu vào kho sản phẩm">✅ đã lưu kho</span>':'')+'<br><code style="font-size:11px;color:#888;">'+escapeHtml(m.code)+'</code></td>'
         +'<td class="text-right">'+(m.cost?formatPrice(m.cost):'—')+'</td>'
         +'<td class="text-right">'+(m.price?formatPrice(m.price):'—')+'</td>'
         +'<td>'+supHtml+'</td>'
