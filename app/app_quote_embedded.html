@@ -3499,6 +3499,39 @@ var _dsLastResult = null;
 
 function dsTokens(s){ var n=normalizeVN(s).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim(); return n?n.split(' '):[]; }
 
+/* Chọn ô có khả năng là TÊN SẢN PHẨM nhất trong 1 dòng nhiều cột (VD dán cả bảng có cột STT/SL/Đơn giá) */
+function dsPickNameCell(cells){
+  var arr = (cells||[]).map(function(c){ return c==null?'':String(c).trim(); }).filter(function(c){ return c!==''; });
+  if(!arr.length) return '';
+  var isNumericish = function(c){
+    var t = c.replace(/[.,\s]/g,'');
+    return /^\d+$/.test(t) || /^(vnđ|đ|k|kg|m|cai|chiec|bo|hop|cuon)$/i.test(c);
+  };
+  var textCells = arr.filter(function(c){ return !isNumericish(c); });
+  var pool = textCells.length ? textCells : arr;
+  var best = pool[0];
+  pool.forEach(function(c){ if(c.length>best.length) best=c; });
+  return best;
+}
+/* Dò cột "Tên hàng/Tên sản phẩm" trong dòng tiêu đề Excel để lấy đúng cột tên, tránh nhầm cột STT/SL/Đơn giá/Tên ĐT nợ/NCC */
+function dsDetectNameColumn(headerRow){
+  if(!headerRow || !headerRow.length) return -1;
+  var EXACT = ['ten hang','ten san pham','ten sp','ten hang hoa','mat hang','san pham','ten vat tu','ten hang hoa dich vu'];
+  var BLACKLIST_CONTAINS = ['dt no','doi tuong','khach hang','khach','cong ty','ncc','nha cung cap','nsx','nguoi','dia chi','ma so thue'];
+  var fallbackIdx = -1;
+  for(var i=0;i<headerRow.length;i++){
+    var raw = headerRow[i]; if(raw==null) continue;
+    var n = normalizeVN(String(raw)).replace(/\s+/g,' ').trim();
+    if(!n) continue;
+    if(EXACT.indexOf(n)>=0) return i;
+    if(/^ten\b/.test(n)){
+      var bad=false;
+      for(var k=0;k<BLACKLIST_CONTAINS.length;k++){ if(n.indexOf(BLACKLIST_CONTAINS[k])>=0){ bad=true; break; } }
+      if(!bad && fallbackIdx<0) fallbackIdx=i;
+    }
+  }
+  return fallbackIdx;
+}
 /* ===== CHUẨN HÓA tên sản phẩm khách gửi TRƯỚC khi đối soát (giống làm sạch dữ liệu KiotViet) ===== */
 function dsCleanName(raw){
   var s = String(raw==null?'':raw);
@@ -3636,7 +3669,7 @@ function dsRenderResult(res){
 
 function dsRunFromPaste(){
   var el=document.getElementById('dsPaste'); var txt=el?el.value:'';
-  var lines=txt.split(/\r?\n/).map(function(l){ return l.split('\t')[0]; }).filter(function(l){ return l.trim(); });
+  var lines=txt.split(/\r?\n/).map(function(l){ return dsPickNameCell(l.split('\t')); }).filter(function(l){ return l.trim(); });
   if(!lines.length){ alert('❌ Dán danh sách sản phẩm vào ô trước.'); return; }
   var st=document.getElementById('dsStatus'); if(st) st.textContent='⏳ Đang chuẩn hóa & đối soát '+lines.length+' dòng...';
   setTimeout(function(){
@@ -3660,11 +3693,15 @@ function dsRunFromFile(){
       var names=[];
       wb.SheetNames.forEach(function(sn){
         var aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
-        aoa.forEach(function(row){
-          var v=row && row[0]; if(v==null) return;
-          var s=String(v).trim(); if(!s) return;
+        if(!aoa.length) return;
+        var nameIdx = dsDetectNameColumn(aoa[0]);
+        var startRow = nameIdx>=0 ? 1 : 0; // có header xác định thì bỏ dòng 1 (header)
+        for(var ri=startRow; ri<aoa.length; ri++){
+          var row=aoa[ri];
+          var s = nameIdx>=0 ? (row && row[nameIdx]!=null ? String(row[nameIdx]).trim() : '') : dsPickNameCell(row);
+          if(!s) continue;
           names.push(s);
-        });
+        }
       });
       if(!names.length){ alert('❌ Không đọc được dòng nào trong file.'); if(st) st.textContent=''; return; }
       if(st) st.textContent='⏳ Đang chuẩn hóa & đối soát '+names.length+' dòng...';
