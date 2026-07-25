@@ -3499,6 +3499,49 @@ var _dsLastResult = null;
 
 function dsTokens(s){ var n=normalizeVN(s).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim(); return n?n.split(' '):[]; }
 
+/* ===== CHUẨN HÓA tên sản phẩm khách gửi TRƯỚC khi đối soát (giống làm sạch dữ liệu KiotViet) ===== */
+function dsCleanName(raw){
+  var s = String(raw==null?'':raw);
+  s = s.replace(/[​-‏﻿]/g,''); // ký tự ẩn
+  s = s.trim();
+  if(!s) return '';
+  // bỏ số thứ tự / gạch đầu dòng: "1.", "1)", "STT 1:", "-", "*", "•"
+  s = s.replace(/^(?:stt\s*[:.\-]?\s*\d*\s*[:.\-]?\s*|\d{1,4}\s*[\.\)]\s*|[-*•‣▪]\s*)+/i,'');
+  // bỏ nhãn thường gặp đầu dòng: "Tên SP:", "Sản phẩm:", "Mặt hàng:"
+  s = s.replace(/^(?:t[êe]n\s*(?:s\.?p\.?|s[ảa]n\s*ph[ẩa]m)?|s\.?p\.?|h[àa]ng\s*h[óo]a|m[ặa]t\s*h[àa]ng)\s*[:\-]\s*/i,'');
+  // gộp khoảng trắng/tab thừa
+  s = s.replace(/[\t ]+/g,' ').replace(/\s{2,}/g,' ').trim();
+  // bỏ số lượng/đơn vị dính cuối dòng: "- SL: 10", "x10", "(10 cái)"
+  s = s.replace(/\s*[-–]?\s*(?:sl|so luong|số lượng|qty)\s*[:=]?\s*\d+\s*$/i,'');
+  s = s.replace(/\s*[xX]\s*\d+\s*$/,'');
+  s = s.replace(/\s*\(\s*\d+\s*(?:c[áa]i|chi[ếe]c|b[ộo]|h[ộo]p|cu[ộo]n|kg|m)?\s*\)\s*$/i,'');
+  // bỏ dấu câu thừa ở cuối
+  s = s.replace(/[:\-–,;]+$/,'').trim();
+  return s;
+}
+function dsIsJunkLine(cleaned){
+  var n = normalizeVN(cleaned).trim();
+  if(!n) return true;
+  if(/^\d+$/.test(n)) return true;
+  if(/^(stt|so tt|ten|ten san pham|ten sp|ten hang|ten hang hoa|ma|ma sp|ma hang|dvt|don vi|so luong|sl|don gia|gia|thanh tien|ghi chu|mo ta)$/.test(n)) return true;
+  if(n.length<2) return true;
+  return false;
+}
+/* Chuẩn hóa 1 mảng dòng thô -> mảng {raw, clean} đã lọc bỏ dòng rác/tiêu đề/trùng lặp */
+function dsPrepareLines(rawLines){
+  var out=[], seen={};
+  (rawLines||[]).forEach(function(raw){
+    var r=String(raw||'').trim(); if(!r) return;
+    var cl=dsCleanName(r);
+    if(dsIsJunkLine(cl)) return;
+    var key=normalizeVN(cl);
+    if(seen[key]) return; // tránh đối soát trùng lặp cùng 1 tên
+    seen[key]=1;
+    out.push({raw:r, clean:cl});
+  });
+  return out;
+}
+
 function dsScoreAgainst(qTokens, qNorm, name){
   var cNorm=normalizeVN(name).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
   if(!cNorm || !qNorm) return 0;
@@ -3519,16 +3562,16 @@ function dsSimScore(qTokens, qNorm, candName, candAliases){
   return best;
 }
 
-function dsMatchOne(rawName){
-  var qTokens=dsTokens(rawName), qNorm=qTokens.join(' ');
+/* Trả về ứng viên TỐT NHẤT dù điểm cao hay thấp (dùng để vừa xác nhận khớp, vừa gợi ý cho SP chưa khớp) */
+function dsBestCandidate(cleanName){
+  var qTokens=dsTokens(cleanName), qNorm=qTokens.join(' ');
   if(!qNorm) return null;
   var bestP=null, bestScore=0;
   appData.s.forEach(function(p){
     var sc=dsSimScore(qTokens,qNorm,p.n,p.a);
     if(sc>bestScore){ bestScore=sc; bestP=p; }
   });
-  if(bestP && bestScore>=0.5) return {p:bestP, score:bestScore};
-  return null;
+  return bestP ? {p:bestP, score:bestScore} : null;
 }
 
 function dsSuppliersFor(code){
@@ -3537,16 +3580,24 @@ function dsSuppliersFor(code){
     .sort(function(a,b){ return (a.gia||0)-(b.gia||0); });
 }
 
-function dsProcessNames(names){
+var DS_MATCH_THRESHOLD = 0.5;
+
+function dsProcessNames(rawLines){
+  var items = dsPrepareLines(rawLines); // đã chuẩn hóa + lọc rác + khử trùng
   var matched=[], unmatched=[];
-  names.forEach(function(raw){
-    raw=String(raw||'').trim(); if(!raw) return;
-    var m=dsMatchOne(raw);
-    if(m){
-      var sup=dsSuppliersFor(m.p.c);
-      matched.push({ customerName:raw, ourName:m.p.n, code:m.p.c, cost:m.p.v||0, price:m.p.p||0, suppliers:sup, score:m.score });
+  items.forEach(function(it){
+    var best = dsBestCandidate(it.clean);
+    if(best && best.score>=DS_MATCH_THRESHOLD){
+      var sup=dsSuppliersFor(best.p.c);
+      matched.push({ customerName:it.raw, ourName:best.p.n, code:best.p.c, cost:best.p.v||0, price:best.p.p||0, suppliers:sup, score:best.score });
     } else {
-      unmatched.push({ customerName:raw });
+      unmatched.push({
+        customerName: it.raw,
+        cleanName: it.clean,
+        suggestName: (best && best.score>=0.15) ? best.p.n : '',
+        suggestCode: (best && best.score>=0.15) ? best.p.c : '',
+        suggestScore: best ? best.score : 0
+      });
     }
   });
   return {matched:matched, unmatched:unmatched};
@@ -3571,7 +3622,13 @@ function dsRenderResult(res){
   html+='<h3 style="margin-top:16px;">❌ Danh sách 2: Chưa từng mua ('+res.unmatched.length+' sản phẩm)</h3>';
   if(!res.unmatched.length){ html+='<p style="color:#999;">Không có.</p>'; }
   else{
-    html+='<ol style="font-size:13px;color:#444;">'+res.unmatched.map(function(u){ return '<li>'+escapeHtml(u.customerName)+'</li>'; }).join('')+'</ol>';
+    html+='<table><thead><tr><th>STT</th><th>Tên khách gửi</th><th>Gợi ý gần giống nhất trong kho (nếu có)</th><th>Độ khớp</th></tr></thead><tbody>';
+    res.unmatched.forEach(function(u,i){
+      var pct = Math.round((u.suggestScore||0)*100);
+      var sugg = u.suggestName ? (escapeHtml(u.suggestName)+' <code style="font-size:11px;color:#888;">'+escapeHtml(u.suggestCode)+'</code>') : '<span style="color:#999;">(không có gợi ý)</span>';
+      html+='<tr><td>'+(i+1)+'</td><td>'+escapeHtml(u.customerName)+'</td><td>'+sugg+'</td><td class="text-right">'+(u.suggestName?pct+'%':'—')+'</td></tr>';
+    });
+    html+='</tbody></table>';
   }
   var box=document.getElementById('dsResult'); if(box) box.innerHTML=html;
   var btn=document.getElementById('dsExportBtn'); if(btn) btn.disabled=false;
@@ -3581,10 +3638,10 @@ function dsRunFromPaste(){
   var el=document.getElementById('dsPaste'); var txt=el?el.value:'';
   var lines=txt.split(/\r?\n/).map(function(l){ return l.split('\t')[0]; }).filter(function(l){ return l.trim(); });
   if(!lines.length){ alert('❌ Dán danh sách sản phẩm vào ô trước.'); return; }
-  var st=document.getElementById('dsStatus'); if(st) st.textContent='⏳ Đang đối soát '+lines.length+' sản phẩm...';
+  var st=document.getElementById('dsStatus'); if(st) st.textContent='⏳ Đang chuẩn hóa & đối soát '+lines.length+' dòng...';
   setTimeout(function(){
     var res=dsProcessNames(lines);
-    if(st) st.textContent='✅ Xong: '+res.matched.length+' đã có / '+res.unmatched.length+' chưa có (tổng '+lines.length+').';
+    if(st) st.textContent='✅ Xong: '+res.matched.length+' đã có / '+res.unmatched.length+' chưa có (đã chuẩn hóa từ '+lines.length+' dòng).';
     dsRenderResult(res);
   },30);
 }
@@ -3605,16 +3662,15 @@ function dsRunFromFile(){
         var aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
         aoa.forEach(function(row){
           var v=row && row[0]; if(v==null) return;
-          var s=String(v).trim();
-          if(!s || /^(ten|ten san pham|stt|ma|so tt)$/.test(normalizeVN(s))) return;
+          var s=String(v).trim(); if(!s) return;
           names.push(s);
         });
       });
       if(!names.length){ alert('❌ Không đọc được dòng nào trong file.'); if(st) st.textContent=''; return; }
-      if(st) st.textContent='⏳ Đang đối soát '+names.length+' sản phẩm...';
+      if(st) st.textContent='⏳ Đang chuẩn hóa & đối soát '+names.length+' dòng...';
       setTimeout(function(){
         var res=dsProcessNames(names);
-        if(st) st.textContent='✅ Xong: '+res.matched.length+' đã có / '+res.unmatched.length+' chưa có (tổng '+names.length+').';
+        if(st) st.textContent='✅ Xong: '+res.matched.length+' đã có / '+res.unmatched.length+' chưa có (đã chuẩn hóa từ '+names.length+' dòng đọc từ file).';
         dsRenderResult(res);
       },30);
     }catch(err){ alert('❌ Lỗi đọc file: '+err.message); if(st) st.textContent=''; }
@@ -3641,12 +3697,12 @@ function dsReadPdf(f){
             if(line) lines.push(line);
           });
         });
-        lines=lines.filter(function(l){ return l.length>1 && !/^(stt|trang|page)\b/i.test(l); });
+        lines=lines.filter(function(l){ return l.length>1; });
         if(!lines.length){ alert('❌ Không đọc được nội dung PDF (có thể là ảnh scan, hãy thử ô Dán hoặc Excel).'); if(st) st.textContent=''; return; }
-        if(st) st.textContent='⏳ Đang đối soát '+lines.length+' dòng từ PDF...';
+        if(st) st.textContent='⏳ Đang chuẩn hóa & đối soát '+lines.length+' dòng từ PDF...';
         setTimeout(function(){
           var res=dsProcessNames(lines);
-          if(st) st.textContent='✅ Xong: '+res.matched.length+' đã có / '+res.unmatched.length+' chưa có (tổng '+lines.length+' dòng đọc từ PDF).';
+          if(st) st.textContent='✅ Xong: '+res.matched.length+' đã có / '+res.unmatched.length+' chưa có (đã chuẩn hóa từ '+lines.length+' dòng đọc từ PDF).';
           dsRenderResult(res);
         },30);
       }).catch(function(err){ alert('❌ Lỗi đọc PDF: '+(err&&err.message||err)); if(st) st.textContent=''; });
@@ -3660,6 +3716,7 @@ function dsReadPdf(f){
   s.onerror=function(){ alert('❌ Không tải được thư viện đọc PDF (cần mạng). Hãy dùng Excel/CSV hoặc dán danh sách.'); if(st) st.textContent=''; };
   document.head.appendChild(s);
 }
+
 
 function dsExportExcel(){
   if(!_dsLastResult){ alert('❌ Chưa có kết quả đối soát.'); return; }
