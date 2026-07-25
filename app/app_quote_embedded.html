@@ -3618,14 +3618,13 @@ function dsIsJunkLine(cleaned){
 }
 /* Chuẩn hóa 1 mảng dòng thô -> mảng {raw, clean} đã lọc bỏ dòng rác/tiêu đề/trùng lặp */
 function dsPrepareLines(rawLines){
-  var out=[], seen={};
+  /* LƯU Ý: KHÔNG khử trùng theo tên — 1 danh sách khách gửi có thể lặp lại cùng 1 tên sản phẩm
+     nhiều dòng (khác kho/số lượng/mục đích...), phải đối soát ĐỦ TỪNG DÒNG, không được gộp mất dòng. */
+  var out=[];
   (rawLines||[]).forEach(function(raw){
     var r=String(raw||'').trim(); if(!r) return;
     var cl=dsCleanName(r);
     if(dsIsJunkLine(cl)) return;
-    var key=normalizeVN(cl);
-    if(seen[key]) return; // tránh đối soát trùng lặp cùng 1 tên
-    seen[key]=1;
     out.push({raw:r, clean:cl});
   });
   return out;
