@@ -338,12 +338,29 @@ header p{ font-size:12px; opacity:.9; }
       </div></div>
 
       <div id="dsManualSearchBox" style="display:none;position:fixed;z-index:9999;top:10%;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;box-shadow:0 4px 20px rgba(0,0,0,.25);border-radius:8px;padding:12px;width:92%;max-width:380px;max-height:76vh;overflow-y:auto;">
-        <div style="font-weight:bold;margin-bottom:6px;">🔍 Tìm sản phẩm thay thế</div>
+        <div style="font-weight:bold;margin-bottom:6px;">🔎 Tìm sản phẩm trong kho</div>
         <input type="text" id="dsManualSearchInput" placeholder="Nhập tên sản phẩm..." style="width:100%;box-sizing:border-box;" oninput="dsManualSearchInputHandler()">
         <div id="dsManualSearchList" style="max-height:50vh;overflow-y:auto;margin-top:6px;"></div>
-        <button onclick="dsCloseManualSearch()" style="margin-top:8px;background:#888;">Đóng</button>
+        <button onclick="dsCloseAnyModal()" style="margin-top:8px;background:#888;">Đóng</button>
       </div>
-      <div id="dsManualSearchOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9998;" onclick="dsCloseManualSearch()"></div>
+      <div id="dsManualEditBox" style="display:none;position:fixed;z-index:9999;top:8%;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;box-shadow:0 4px 20px rgba(0,0,0,.25);border-radius:8px;padding:12px;width:92%;max-width:380px;max-height:80vh;overflow-y:auto;">
+        <div style="font-weight:bold;margin-bottom:8px;">✏️ Tự nhập / sửa thông tin sản phẩm</div>
+        <label style="font-size:12px;color:#666;">Tên sản phẩm *</label>
+        <input type="text" id="dsEditName" style="width:100%;box-sizing:border-box;margin-bottom:6px;">
+        <label style="font-size:12px;color:#666;">Mã (tuỳ chọn)</label>
+        <input type="text" id="dsEditCode" style="width:100%;box-sizing:border-box;margin-bottom:6px;">
+        <label style="font-size:12px;color:#666;">ĐVT</label>
+        <input type="text" id="dsEditUnit" style="width:100%;box-sizing:border-box;margin-bottom:6px;">
+        <div style="display:flex;gap:8px;">
+          <div style="flex:1;"><label style="font-size:12px;color:#666;">Giá gốc</label><input type="number" id="dsEditCost" style="width:100%;box-sizing:border-box;"></div>
+          <div style="flex:1;"><label style="font-size:12px;color:#666;">Giá bán</label><input type="number" id="dsEditPrice" style="width:100%;box-sizing:border-box;"></div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;">
+          <button onclick="dsSaveManualEdit()" style="background:#1f5c8a;">💾 Lưu</button>
+          <button onclick="dsCloseAnyModal()" style="background:#888;">Đóng</button>
+        </div>
+      </div>
+      <div id="dsManualSearchOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9998;" onclick="dsCloseAnyModal()"></div>
     </div>
     <div id="tab4" class="tab-content">
       <div class="card">
@@ -2237,20 +2254,8 @@ function updateQuoteTable() {
     var ta = document.getElementById('totalAmount'); if (ta) ta.textContent = formatPrice(total);
   }
 
-  let warnDiv = document.getElementById('quoteLimitWarning');
-  if (!warnDiv) {
-    warnDiv = document.createElement('div');
-    warnDiv.id = 'quoteLimitWarning';
-    warnDiv.className = 'error';
-    warnDiv.style.marginTop = '10px';
-    document.getElementById('quoteTable').insertAdjacentElement('afterend', warnDiv);
-  }
-  if (quoteData.items.length > 8) {
-    warnDiv.textContent = '⚠️ Mẫu báo giá chỉ hỗ trợ tối đa 8 sản phẩm/trang. Có ' + quoteData.items.length + ' sản phẩm — chỉ 8 sản phẩm đầu sẽ được đưa vào file xuất, các sản phẩm còn lại sẽ bị bỏ qua.';
-    warnDiv.classList.remove('hidden');
-  } else {
-    warnDiv.classList.add('hidden');
-  }
+  var warnDivOld = document.getElementById('quoteLimitWarning');
+  if (warnDivOld) warnDivOld.classList.add('hidden'); // đã bỏ giới hạn số sản phẩm — PDF tự sang trang, không cắt giữa chừng
   if (typeof dsRenderQuotePreview === 'function') dsRenderQuotePreview();
 }
 
@@ -3356,8 +3361,8 @@ function _bgContentHtml(){
     'Giao hàng: Theo thỏa thuận.','Thanh toán: Theo thỏa thuận.','Báo giá có hiệu lực trong vòng 15 ngày kể từ ngày báo giá.']
     .map(function(t,i){return '<div>'+(i+1)+'/ '+t+'</div>';}).join('');
   var nItems=items.length;
-  var rowPad = nItems<=1 ? 16 : nItems<=3 ? 12 : nItems<=6 ? 9 : nItems<=9 ? 7 : nItems<=14 ? 5 : nItems<=18 ? 4 : nItems<=24 ? 3 : 2;
-  var tblFont = nItems<=6 ? 15 : nItems<=9 ? 14 : nItems<=14 ? 13 : nItems<=18 ? 12 : nItems<=24 ? 11 : 10;
+  var rowPad = nItems<=1 ? 16 : nItems<=3 ? 12 : nItems<=6 ? 9 : nItems<=9 ? 7 : 6; /* >9 SP: giữ cỡ dễ đọc, dư thì tự sang trang, KHÔNG co nhỏ thêm nữa */
+  var tblFont = nItems<=6 ? 15 : nItems<=9 ? 14 : 13;
   var css='#htbg{color:#000;font-family:"Times New Roman",serif;font-size:15px;background:#fff;padding:8px 12px;width:780px;}'
     +'#htbg *{box-sizing:border-box;font-family:"Times New Roman",serif;}'
     +'#htbg .hd{display:flex;align-items:center;gap:14px;border-bottom:2px solid #333;padding-bottom:8px;}'
@@ -3375,15 +3380,15 @@ function _bgContentHtml(){
     +'<div class=\"li\"><b>Chủ tài khoản:</b> CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART</div>'
     +'<div class=\"li\"><b>Số tài khoản:</b> 8090688688</div></div><img class=\"qr\" src=\"'+HT_QR+'\">';
   var inner='<style>'+css+'</style>'
-    +'<div class=\"hd\"><img src=\"'+HT_LOGO+'\"><div class=\"co\"><b>CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART</b>'
+    +'<div class=\"hd atom\"><img src=\"'+HT_LOGO+'\"><div class=\"co\"><b>CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART</b>'
     +'<div>Địa chỉ: Khu 13, Hoàng Xá, Thanh Thủy, Phú Thọ</div><div>Điện thoại: 0982829806 &nbsp;|&nbsp; MST: 2601158676</div></div></div>'
     +'<h1>BẢNG BÁO GIÁ</h1><div class=\"sub\">'+escapeHtml(dstr)+'</div>'
-    +'<div class=\"kg\"><div><b>Kính gửi:</b> '+escapeHtml(cust)+'</div><div><b>Địa chỉ:</b> '+escapeHtml(addr)+'</div><div><b>Điện thoại:</b> '+escapeHtml(phone)+'</div></div>'
+    +'<div class=\"kg atom\"><div><b>Kính gửi:</b> '+escapeHtml(cust)+'</div><div><b>Địa chỉ:</b> '+escapeHtml(addr)+'</div><div><b>Điện thoại:</b> '+escapeHtml(phone)+'</div></div>'
     +'<table><thead><tr>'+head+'</tr></thead><tbody>'+rows+tot+'</tbody></table>'
-    +'<div style=\"margin-top:6px;\"><b>Bằng chữ:</b> '+_docSo(grand)+'</div>'
-    +'<div class=\"luu\"><div class=\"t\">Lưu ý:</div>'+luu+'</div>'
-    +'<div class=\"pay\">'+payR+'</div>'
-    +'<div class=\"sign\"><div class=\"r1\">ĐẠI DIỆN HƯNG THỊNH SMART</div><div class=\"r2\">(Ký, ghi rõ họ tên, đóng dấu)</div><div class=\"stampwrap\"><img class=\"stamp\" src=\"'+HT_STAMP+'\"><img class=\"sig\" src=\"'+HT_SIG+'\"></div></div>';
+    +'<div class=\"atom\" style=\"margin-top:6px;\"><b>Bằng chữ:</b> '+_docSo(grand)+'</div>'
+    +'<div class=\"luu atom\"><div class=\"t\">Lưu ý:</div>'+luu+'</div>'
+    +'<div class=\"pay atom\">'+payR+'</div>'
+    +'<div class=\"sign atom\"><div class=\"r1\">ĐẠI DIỆN HƯNG THỊNH SMART</div><div class=\"r2\">(Ký, ghi rõ họ tên, đóng dấu)</div><div class=\"stampwrap\"><img class=\"stamp\" src=\"'+HT_STAMP+'\"><img class=\"sig\" src=\"'+HT_SIG+'\"></div></div>';
   return {inner:inner, name:(cust||qn).replace(/[^0-9A-Za-zÀ-ỹ]+/g,'_').replace(/^_+|_+$/g,'')||'BaoGia'};
 }
 function printBaoGiaOffline(){
@@ -3408,10 +3413,46 @@ function printBaoGiaOffline(){
       var c=w.prop.canvas;
       return w.toPdf().then(function(){
         var pdf=w.prop.pdf, pageW=210, pageH=297, margin=8, maxW=pageW-2*margin, maxH=pageH-2*margin, tot=pdf.internal.getNumberOfPages();
-        var imgW=maxW, imgH=c.height*imgW/c.width;
-        if(imgH>maxH){ imgH=maxH; imgW=c.width*imgH/c.height; }  /* dài quá 1 trang -> thu nhỏ vừa khít, KHÔNG cắt (con dấu luôn còn) */
-        var x=(pageW-imgW)/2, y=margin;
-        pdf.addPage(); pdf.addImage(c.toDataURL('image/jpeg',0.96),'JPEG',x,y,imgW,imgH);
+        /* KHÔNG giới hạn số sản phẩm: nếu nội dung dài hơn 1 trang A4 thì TỰ SANG TRANG 2-3-4...,
+           nhưng luôn ngắt trang ở ranh giới AN TOÀN (không cắt ngang 1 dòng sản phẩm / khối lưu ý / thanh toán / chữ ký+dấu) */
+        var mmPerCss = maxW/780;          // 1 css px (theo host rộng 780px) tương ứng bao nhiêu mm khi in full khổ giấy
+        var scaleY = c.height/oh;         // tỉ lệ pixel canvas / css px theo chiều cao
+        var pageCssH = maxH/mmPerCss;     // chiều cao tối đa 1 trang, tính theo css px của host
+
+        var atoms=[];
+        host.querySelectorAll('tr, .atom').forEach(function(el){
+          var top=el.offsetTop, bot=top+el.offsetHeight;
+          if(bot>top) atoms.push({top:top, bot:bot});
+        });
+        atoms.sort(function(a,b){ return a.top-b.top; });
+
+        var pages=[]; var cursor=0; var guard=0;
+        while(cursor < oh - 0.5 && guard < 500){
+          guard++;
+          var end = Math.min(cursor + pageCssH, oh);
+          for(var ai=0; ai<atoms.length; ai++){
+            var a=atoms[ai];
+            if(a.top < end - 0.5 && a.bot > end + 0.5 && a.top > cursor + 0.5){ end = a.top; break; }
+          }
+          if(end <= cursor + 1) end = Math.min(cursor + pageCssH, oh); // an toàn, tránh treo nếu 1 khối > 1 trang (rất hiếm)
+          pages.push({start:cursor, end:end});
+          cursor = end;
+        }
+        if(!pages.length) pages.push({start:0, end:oh});
+
+        pages.forEach(function(pg){
+          var sliceCssH = pg.end - pg.start;
+          var sliceCanvasH = Math.max(1, Math.round(sliceCssH * scaleY));
+          var sy = Math.round(pg.start * scaleY);
+          var tmp=document.createElement('canvas'); tmp.width=c.width; tmp.height=sliceCanvasH;
+          var tctx=tmp.getContext('2d');
+          tctx.fillStyle='#ffffff'; tctx.fillRect(0,0,tmp.width,tmp.height);
+          tctx.drawImage(c, 0, sy, c.width, sliceCanvasH, 0, 0, c.width, sliceCanvasH);
+          var imgWmm=maxW, imgHmm=sliceCssH*mmPerCss;
+          var x=(pageW-imgWmm)/2, y=margin;
+          pdf.addPage();
+          pdf.addImage(tmp.toDataURL('image/jpeg',0.96),'JPEG',x,y,imgWmm,imgHmm);
+        });
         for(var i=tot;i>=1;i--) pdf.deletePage(i);
         var _fn='BaoGia_'+d.name+'.pdf';
         if(_isMob){
@@ -3660,6 +3701,14 @@ function dsSearchCandidates(query, limit){
   return scored.slice(0, limit);
 }
 
+function dsCloseAnyModal(){
+  var b1=document.getElementById('dsManualSearchBox'); if(b1) b1.style.display='none';
+  var b2=document.getElementById('dsManualEditBox'); if(b2) b2.style.display='none';
+  var ov=document.getElementById('dsManualSearchOverlay'); if(ov) ov.style.display='none';
+  _dsEditingRow=null;
+}
+
+/* ---- 🔎 TÌM: tìm trong bảng sản phẩm có sẵn (appData.s) ---- */
 function dsOpenManualSearch(type, idx){
   _dsEditingRow = {type:type, idx:idx};
   var res=_dsLastResult; if(!res) return;
@@ -3671,12 +3720,6 @@ function dsOpenManualSearch(type, idx){
   document.getElementById('dsManualSearchBox').style.display='block';
   dsManualSearchInputHandler();
   if(inp){ inp.focus(); inp.select(); }
-}
-
-function dsCloseManualSearch(){
-  document.getElementById('dsManualSearchOverlay').style.display='none';
-  document.getElementById('dsManualSearchBox').style.display='none';
-  _dsEditingRow=null;
 }
 
 function dsManualSearchInputHandler(){
@@ -3703,24 +3746,68 @@ function dsApplyManualMatch(code){
   var sup = dsSuppliersFor(p.c);
   if(type==='m'){
     var m=res.matched[idx]; if(!m) return;
-    m.ourName=p.n; m.code=p.c; m.cost=p.v||0; m.price=p.p||0; m.suppliers=sup; m.score=1; m._manual=true;
+    m.ourName=p.n; m.code=p.c; m.unit=p.u||''; m.cost=p.v||0; m.price=p.p||0; m.suppliers=sup; m.score=1; m._manual=true;
   } else {
     var u=res.unmatched[idx]; if(!u) return;
-    var newM={ customerName:u.customerName, ourName:p.n, code:p.c, cost:p.v||0, price:p.p||0, suppliers:sup, score:1, _manual:true };
+    var newM={ customerName:u.customerName, ourName:p.n, code:p.c, unit:p.u||'', cost:p.v||0, price:p.p||0, suppliers:sup, score:1, _manual:true };
     res.unmatched.splice(idx,1);
     res.matched.push(newM);
   }
-  dsCloseManualSearch();
+  dsCloseAnyModal();
   dsRenderResult(res);
 }
 
+/* ---- ✏️ SỬA: tự nhập tay tên/giá... (không cần có sẵn trong kho) ---- */
+function dsOpenManualEdit(type, idx){
+  _dsEditingRow = {type:type, idx:idx};
+  var res=_dsLastResult; if(!res) return;
+  var item = type==='m' ? res.matched[idx] : res.unmatched[idx];
+  if(!item) return;
+  var name = type==='m' ? (item.ourName||item.customerName) : (item.suggestName||item.cleanName||item.customerName);
+  document.getElementById('dsEditName').value = name||'';
+  document.getElementById('dsEditCode').value = type==='m' ? (item.code||'') : (item.suggestCode||'');
+  document.getElementById('dsEditUnit').value = type==='m' ? (item.unit||'') : '';
+  document.getElementById('dsEditCost').value = type==='m' ? (item.cost||'') : '';
+  document.getElementById('dsEditPrice').value = type==='m' ? (item.price||'') : '';
+  document.getElementById('dsManualSearchOverlay').style.display='block';
+  document.getElementById('dsManualEditBox').style.display='block';
+  var nm=document.getElementById('dsEditName'); if(nm){ nm.focus(); nm.select(); }
+}
+
+function dsSaveManualEdit(){
+  if(!_dsEditingRow || !_dsLastResult) return;
+  var name=(document.getElementById('dsEditName').value||'').trim();
+  if(!name){ alert('❌ Nhập tên sản phẩm.'); return; }
+  var code=(document.getElementById('dsEditCode').value||'').trim();
+  var unit=(document.getElementById('dsEditUnit').value||'').trim();
+  var cost=parseFloat(document.getElementById('dsEditCost').value)||0;
+  var price=parseFloat(document.getElementById('dsEditPrice').value)||0;
+  var res=_dsLastResult, type=_dsEditingRow.type, idx=_dsEditingRow.idx;
+  if(type==='m'){
+    var m=res.matched[idx]; if(!m) return;
+    m.ourName=name; m.code=code; m.unit=unit; m.cost=cost; m.price=price; m.suppliers=m.suppliers||[]; m._manual=true;
+  } else {
+    var u=res.unmatched[idx]; if(!u) return;
+    var newM={ customerName:u.customerName, ourName:name, code:code, unit:unit, cost:cost, price:price, suppliers:[], score:1, _manual:true };
+    res.unmatched.splice(idx,1);
+    res.matched.push(newM);
+  }
+  dsCloseAnyModal();
+  dsRenderResult(res);
+}
+
+/* ---- 📋 BÁO GIÁ: thêm vào phiếu báo giá đang soạn (dùng lại sản phẩm trong kho nếu có, hoặc thêm thẳng nếu là SP tự nhập tay) ---- */
 function dsAddToQuote(type, idx){
   var res=_dsLastResult; if(!res) return;
   var item = type==='m' ? res.matched[idx] : null;
-  if(!item || !item.code){ alert('❌ Chưa xác định được sản phẩm — bấm "🔍 Sửa" để tìm & chọn trước.'); return; }
-  var pIdx = appData.s.findIndex(function(p){ return p.c===item.code; });
-  if(pIdx<0){ alert('❌ Không tìm thấy sản phẩm trong kho.'); return; }
-  selectProduct(pIdx);
+  if(!item || !item.ourName){ alert('❌ Chưa xác định được sản phẩm — bấm "🔎 Tìm" hoặc "✏️ Sửa" trước.'); return; }
+  var pIdx = item.code ? appData.s.findIndex(function(p){ return p.c===item.code; }) : -1;
+  if(pIdx>=0){
+    selectProduct(pIdx);
+  } else {
+    quoteData.items.push({ name:item.ourName||'', code:item.code||'', unit:item.unit||'', qty:1, cost:item.cost||0, price:item.price||0, note:'', description:'', img:'' });
+    updateQuoteTable();
+  }
   item._added=(item._added||0)+1;
   dsRenderResult(res);
 }
@@ -3767,7 +3854,8 @@ function dsRenderResult(res){
         +'<td class="text-right">'+(m.cost?formatPrice(m.cost):'—')+'</td>'
         +'<td class="text-right">'+(m.price?formatPrice(m.price):'—')+'</td>'
         +'<td>'+supHtml+'</td>'
-        +'<td style="white-space:nowrap;"><button onclick="dsOpenManualSearch(\'m\','+i+')" style="font-size:12px;padding:4px 7px;">🔍 Sửa</button> '
+        +'<td style="white-space:nowrap;"><button onclick="dsOpenManualSearch(\'m\','+i+')" style="font-size:12px;padding:4px 7px;">🔎 Tìm</button> '
+        +'<button onclick="dsOpenManualEdit(\'m\','+i+')" style="font-size:12px;padding:4px 7px;">✏️ Sửa</button> '
         +'<button onclick="dsAddToQuote(\'m\','+i+')" style="font-size:12px;padding:4px 7px;background:#27ae60;">📋 Báo giá'+(m._added?' ✓':'')+'</button></td></tr>';
     });
     html+='</tbody></table>';
@@ -3780,7 +3868,9 @@ function dsRenderResult(res){
       var pct = Math.round((u.suggestScore||0)*100);
       var sugg = u.suggestName ? (escapeHtml(u.suggestName)+' <code style="font-size:11px;color:#888;">'+escapeHtml(u.suggestCode)+'</code>') : '<span style="color:#999;">(không có gợi ý)</span>';
       html+='<tr><td>'+(i+1)+'</td><td>'+escapeHtml(u.customerName)+'</td><td>'+sugg+'</td><td class="text-right">'+(u.suggestName?pct+'%':'—')+'</td>'
-        +'<td style="white-space:nowrap;"><button onclick="dsOpenManualSearch(\'u\','+i+')" style="font-size:12px;padding:4px 7px;">🔍 Tìm &amp; chọn</button></td></tr>';
+        +'<td style="white-space:nowrap;"><button onclick="dsOpenManualSearch(\'u\','+i+')" style="font-size:12px;padding:4px 7px;">🔎 Tìm</button> '
+        +'<button onclick="dsOpenManualEdit(\'u\','+i+')" style="font-size:12px;padding:4px 7px;">✏️ Sửa</button> '
+        +'<button onclick="alert(\'❌ Chưa xác định được sản phẩm — bấm 🔎 Tìm hoặc ✏️ Sửa trước.\')" style="font-size:12px;padding:4px 7px;background:#95a5a6;">📋 Báo giá</button></td></tr>';
     });
     html+='</tbody></table>';
   }
