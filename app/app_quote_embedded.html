@@ -309,6 +309,20 @@ header p{ font-size:12px; opacity:.9; }
         </div>
         <div id="lowStockResult"></div>
       </div>
+
+      <div class="card">
+        <h2>🧾 Đối soát sản phẩm khách gửi <span style="font-size:12px;color:#999;font-weight:normal;">(khách gửi 200 SP → tự tìm trong kho + giá NCC)</span></h2>
+        <p style="color:#666;font-size:13px;margin-bottom:10px;">Dán danh sách hoặc nạp file Excel/CSV/PDF khách gửi (mỗi dòng 1 sản phẩm). App tự dò tên gần đúng trong kho (không cần khớp 100%), liệt kê giá nhập/giá bán + nhà cung cấp — nếu có nhiều NCC thì xếp theo giá thấp → cao.</p>
+        <textarea id="dsPaste" placeholder="Dán danh sách sản phẩm khách gửi (mỗi dòng 1 sản phẩm)..." style="width:100%;height:100px;box-sizing:border-box;"></textarea>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <input type="file" id="dsFile" accept=".xlsx,.xls,.csv,.pdf" style="max-width:260px;">
+          <button onclick="dsRunFromFile()">📄 Đọc từ file (Excel/CSV/PDF)</button>
+          <button onclick="dsRunFromPaste()">📋 Đối soát từ ô dán</button>
+          <button onclick="dsExportExcel()" style="background:#27ae60;" id="dsExportBtn" disabled>📥 Xuất Excel kết quả</button>
+        </div>
+        <div id="dsStatus" style="margin-top:8px;font-size:13px;color:#666;"></div>
+        <div id="dsResult" style="margin-top:10px;overflow-x:auto;"></div>
+      </div>
     </div>
     <div id="tab4" class="tab-content">
       <div class="card">
@@ -3465,6 +3479,192 @@ function prefillPendingRecipient(){
     if(s && !s.value && p.sdt) s.value=p.sdt;
     if(d && !d.value && p.diachi) d.value=p.diachi;
   }catch(e){}
+}
+
+
+/* ===== ĐỐI SOÁT SẢN PHẨM KHÁCH GỬI (fuzzy match + giá NCC) — 2026-07-24 ===== */
+var _dsLastResult = null;
+
+function dsTokens(s){ var n=normalizeVN(s).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim(); return n?n.split(' '):[]; }
+
+function dsScoreAgainst(qTokens, qNorm, name){
+  var cNorm=normalizeVN(name).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  if(!cNorm || !qNorm) return 0;
+  if(cNorm===qNorm) return 1;
+  var cT=cNorm.split(' ');
+  var qSet={}; qTokens.forEach(function(t){ qSet[t]=1; });
+  var inter=0; cT.forEach(function(t){ if(qSet[t]) inter++; });
+  var uniSet={}; qTokens.concat(cT).forEach(function(t){ uniSet[t]=1; });
+  var uniCount=Object.keys(uniSet).length;
+  var jac = uniCount ? inter/uniCount : 0;
+  var sub = (cNorm.indexOf(qNorm)>=0 || qNorm.indexOf(cNorm)>=0) ? 0.2 : 0;
+  return Math.min(1, jac*0.8 + sub);
+}
+
+function dsSimScore(qTokens, qNorm, candName, candAliases){
+  var best = dsScoreAgainst(qTokens, qNorm, candName);
+  (candAliases||[]).forEach(function(a){ var s=dsScoreAgainst(qTokens,qNorm,a); if(s>best) best=s; });
+  return best;
+}
+
+function dsMatchOne(rawName){
+  var qTokens=dsTokens(rawName), qNorm=qTokens.join(' ');
+  if(!qNorm) return null;
+  var bestP=null, bestScore=0;
+  appData.s.forEach(function(p){
+    var sc=dsSimScore(qTokens,qNorm,p.n,p.a);
+    if(sc>bestScore){ bestScore=sc; bestP=p; }
+  });
+  if(bestP && bestScore>=0.5) return {p:bestP, score:bestScore};
+  return null;
+}
+
+function dsSuppliersFor(code){
+  return (appData.ncc||[]).filter(function(r){ return r.c===code; })
+    .map(function(r){ return {ncc:r.ncc, gia:r.gia||0}; })
+    .sort(function(a,b){ return (a.gia||0)-(b.gia||0); });
+}
+
+function dsProcessNames(names){
+  var matched=[], unmatched=[];
+  names.forEach(function(raw){
+    raw=String(raw||'').trim(); if(!raw) return;
+    var m=dsMatchOne(raw);
+    if(m){
+      var sup=dsSuppliersFor(m.p.c);
+      matched.push({ customerName:raw, ourName:m.p.n, code:m.p.c, cost:m.p.v||0, price:m.p.p||0, suppliers:sup, score:m.score });
+    } else {
+      unmatched.push({ customerName:raw });
+    }
+  });
+  return {matched:matched, unmatched:unmatched};
+}
+
+function dsRenderResult(res){
+  _dsLastResult=res;
+  var html='';
+  html+='<h3 style="margin-top:6px;">✅ Danh sách 1: Đã có / đã từng mua ('+res.matched.length+' sản phẩm)</h3>';
+  if(!res.matched.length){ html+='<p style="color:#999;">Không có sản phẩm nào khớp.</p>'; }
+  else{
+    html+='<table><thead><tr><th>Tên khách gửi</th><th>Tên trong kho (mã)</th><th>Giá nhập</th><th>Giá bán</th><th>Nhà cung cấp (giá thấp → cao)</th></tr></thead><tbody>';
+    res.matched.forEach(function(m){
+      var supHtml = m.suppliers.length ? m.suppliers.map(function(s,i){ return (i+1)+'. '+escapeHtml(s.ncc)+': <b>'+formatPrice(s.gia)+'</b>'; }).join('<br>') : '<span style="color:#999;">(chưa có dữ liệu NCC)</span>';
+      html+='<tr><td>'+escapeHtml(m.customerName)+'</td><td>'+escapeHtml(m.ourName)+'<br><code style="font-size:11px;color:#888;">'+escapeHtml(m.code)+'</code></td>'
+        +'<td class="text-right">'+(m.cost?formatPrice(m.cost):'—')+'</td>'
+        +'<td class="text-right">'+(m.price?formatPrice(m.price):'—')+'</td>'
+        +'<td>'+supHtml+'</td></tr>';
+    });
+    html+='</tbody></table>';
+  }
+  html+='<h3 style="margin-top:16px;">❌ Danh sách 2: Chưa từng mua ('+res.unmatched.length+' sản phẩm)</h3>';
+  if(!res.unmatched.length){ html+='<p style="color:#999;">Không có.</p>'; }
+  else{
+    html+='<ol style="font-size:13px;color:#444;">'+res.unmatched.map(function(u){ return '<li>'+escapeHtml(u.customerName)+'</li>'; }).join('')+'</ol>';
+  }
+  var box=document.getElementById('dsResult'); if(box) box.innerHTML=html;
+  var btn=document.getElementById('dsExportBtn'); if(btn) btn.disabled=false;
+}
+
+function dsRunFromPaste(){
+  var el=document.getElementById('dsPaste'); var txt=el?el.value:'';
+  var lines=txt.split(/\r?\n/).map(function(l){ return l.split('\t')[0]; }).filter(function(l){ return l.trim(); });
+  if(!lines.length){ alert('❌ Dán danh sách sản phẩm vào ô trước.'); return; }
+  var st=document.getElementById('dsStatus'); if(st) st.textContent='⏳ Đang đối soát '+lines.length+' sản phẩm...';
+  setTimeout(function(){
+    var res=dsProcessNames(lines);
+    if(st) st.textContent='✅ Xong: '+res.matched.length+' đã có / '+res.unmatched.length+' chưa có (tổng '+lines.length+').';
+    dsRenderResult(res);
+  },30);
+}
+
+function dsRunFromFile(){
+  var fEl=document.getElementById('dsFile'); var f=fEl && fEl.files && fEl.files[0];
+  if(!f){ alert('❌ Chọn file trước (hoặc dùng ô Dán).'); return; }
+  var name=f.name.toLowerCase();
+  var st=document.getElementById('dsStatus'); if(st) st.textContent='⏳ Đang đọc file...';
+  if(/\.pdf$/.test(name)){ dsReadPdf(f); return; }
+  if(typeof XLSX==='undefined'){ alert('❌ Chưa tải được thư viện đọc Excel (cần mạng). Hãy dùng ô "Dán bảng".'); return; }
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var wb=XLSX.read(e.target.result,{type:'array'});
+      var names=[];
+      wb.SheetNames.forEach(function(sn){
+        var aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
+        aoa.forEach(function(row){
+          var v=row && row[0]; if(v==null) return;
+          var s=String(v).trim();
+          if(!s || /^(ten|ten san pham|stt|ma|so tt)$/.test(normalizeVN(s))) return;
+          names.push(s);
+        });
+      });
+      if(!names.length){ alert('❌ Không đọc được dòng nào trong file.'); if(st) st.textContent=''; return; }
+      if(st) st.textContent='⏳ Đang đối soát '+names.length+' sản phẩm...';
+      setTimeout(function(){
+        var res=dsProcessNames(names);
+        if(st) st.textContent='✅ Xong: '+res.matched.length+' đã có / '+res.unmatched.length+' chưa có (tổng '+names.length+').';
+        dsRenderResult(res);
+      },30);
+    }catch(err){ alert('❌ Lỗi đọc file: '+err.message); if(st) st.textContent=''; }
+  };
+  reader.readAsArrayBuffer(f);
+}
+
+function dsReadPdf(f){
+  var st=document.getElementById('dsStatus');
+  function go(){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      pdfjsLib.getDocument({data:e.target.result}).promise.then(function(pdf){
+        var pagePromises=[];
+        for(var p=1;p<=pdf.numPages;p++){ pagePromises.push(pdf.getPage(p).then(function(page){ return page.getTextContent(); })); }
+        return Promise.all(pagePromises);
+      }).then(function(pages){
+        var lines=[];
+        pages.forEach(function(tc){
+          var rows={};
+          tc.items.forEach(function(it){ var y=Math.round(it.transform[5]); (rows[y]=rows[y]||[]).push(it.str); });
+          Object.keys(rows).map(Number).sort(function(a,b){ return b-a; }).forEach(function(y){
+            var line=rows[y].join(' ').replace(/\s+/g,' ').trim();
+            if(line) lines.push(line);
+          });
+        });
+        lines=lines.filter(function(l){ return l.length>1 && !/^(stt|trang|page)\b/i.test(l); });
+        if(!lines.length){ alert('❌ Không đọc được nội dung PDF (có thể là ảnh scan, hãy thử ô Dán hoặc Excel).'); if(st) st.textContent=''; return; }
+        if(st) st.textContent='⏳ Đang đối soát '+lines.length+' dòng từ PDF...';
+        setTimeout(function(){
+          var res=dsProcessNames(lines);
+          if(st) st.textContent='✅ Xong: '+res.matched.length+' đã có / '+res.unmatched.length+' chưa có (tổng '+lines.length+' dòng đọc từ PDF).';
+          dsRenderResult(res);
+        },30);
+      }).catch(function(err){ alert('❌ Lỗi đọc PDF: '+(err&&err.message||err)); if(st) st.textContent=''; });
+    };
+    reader.readAsArrayBuffer(f);
+  }
+  if(typeof pdfjsLib!=='undefined'){ go(); return; }
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  s.onload=function(){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }catch(e){} go(); };
+  s.onerror=function(){ alert('❌ Không tải được thư viện đọc PDF (cần mạng). Hãy dùng Excel/CSV hoặc dán danh sách.'); if(st) st.textContent=''; };
+  document.head.appendChild(s);
+}
+
+function dsExportExcel(){
+  if(!_dsLastResult){ alert('❌ Chưa có kết quả đối soát.'); return; }
+  if(typeof XLSX==='undefined'){ alert('❌ Chưa tải được thư viện Excel (cần mạng).'); return; }
+  var wb=XLSX.utils.book_new();
+  var rows1=[['Tên khách gửi','Tên trong kho','Mã','Giá nhập','Giá bán','Nhà cung cấp 1','Giá NCC1','Nhà cung cấp 2','Giá NCC2','Nhà cung cấp 3','Giá NCC3']];
+  _dsLastResult.matched.forEach(function(m){
+    var row=[m.customerName, m.ourName, m.code, m.cost||'', m.price||''];
+    for(var i=0;i<3;i++){ if(m.suppliers[i]){ row.push(m.suppliers[i].ncc); row.push(m.suppliers[i].gia); } else { row.push(''); row.push(''); } }
+    rows1.push(row);
+  });
+  var ws1=XLSX.utils.aoa_to_sheet(rows1);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Da co trong kho');
+  var rows2=[['Tên khách gửi (chưa có trong kho)']].concat(_dsLastResult.unmatched.map(function(u){ return [u.customerName]; }));
+  var ws2=XLSX.utils.aoa_to_sheet(rows2);
+  XLSX.utils.book_append_sheet(wb, ws2, 'Chua co');
+  XLSX.writeFile(wb, 'DoiSoat_SanPham_'+Date.now()+'.xlsx');
 }
 
 /* Ẩn dropdown chọn khách khi bấm RA NGOÀI (thay onblur hay ẩn nhầm khi đang gõ) */
