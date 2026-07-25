@@ -333,8 +333,17 @@ header p{ font-size:12px; opacity:.9; }
           <button onclick="dsExportExcel()" style="background:#27ae60;" id="dsExportBtn" disabled>📥 Xuất Excel kết quả</button>
         </div>
         <div id="dsStatus" style="margin-top:8px;font-size:13px;color:#666;"></div>
+        <div id="dsQuotePreview" style="display:none;margin-top:10px;border:1px solid #cfe3f2;background:#f7fbfe;border-radius:8px;padding:10px;"></div>
         <div id="dsResult" style="margin-top:10px;overflow-x:auto;"></div>
       </div></div>
+
+      <div id="dsManualSearchBox" style="display:none;position:fixed;z-index:9999;top:10%;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;box-shadow:0 4px 20px rgba(0,0,0,.25);border-radius:8px;padding:12px;width:92%;max-width:380px;max-height:76vh;overflow-y:auto;">
+        <div style="font-weight:bold;margin-bottom:6px;">🔍 Tìm sản phẩm thay thế</div>
+        <input type="text" id="dsManualSearchInput" placeholder="Nhập tên sản phẩm..." style="width:100%;box-sizing:border-box;" oninput="dsManualSearchInputHandler()">
+        <div id="dsManualSearchList" style="max-height:50vh;overflow-y:auto;margin-top:6px;"></div>
+        <button onclick="dsCloseManualSearch()" style="margin-top:8px;background:#888;">Đóng</button>
+      </div>
+      <div id="dsManualSearchOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9998;" onclick="dsCloseManualSearch()"></div>
     </div>
     <div id="tab4" class="tab-content">
       <div class="card">
@@ -2242,6 +2251,7 @@ function updateQuoteTable() {
   } else {
     warnDiv.classList.add('hidden');
   }
+  if (typeof dsRenderQuotePreview === 'function') dsRenderQuotePreview();
 }
 
 function updateItem(idx, field, value) {
@@ -3636,35 +3646,147 @@ function dsProcessNames(rawLines){
   return {matched:matched, unmatched:unmatched};
 }
 
+/* ===== Tìm/chọn thủ công sản phẩm thay thế + thêm vào báo giá (2026-07-25) ===== */
+var _dsEditingRow = null; // {type:'m'|'u', idx:n}
+
+function dsSearchCandidates(query, limit){
+  limit = limit || 8;
+  var qTokens = dsTokens(query), qNorm = qTokens.join(' ');
+  if(!qNorm) return [];
+  var scored = appData.s.map(function(p){
+    return {p:p, score: dsSimScore(qTokens, qNorm, p.n, p.a)};
+  }).filter(function(x){ return x.score>0.05; });
+  scored.sort(function(a,b){ return b.score-a.score; });
+  return scored.slice(0, limit);
+}
+
+function dsOpenManualSearch(type, idx){
+  _dsEditingRow = {type:type, idx:idx};
+  var res=_dsLastResult; if(!res) return;
+  var item = type==='m' ? res.matched[idx] : res.unmatched[idx];
+  if(!item) return;
+  var prefill = (type==='u' ? (item.cleanName||item.customerName) : (item.ourName||item.customerName)) || '';
+  var inp=document.getElementById('dsManualSearchInput'); if(inp) inp.value=prefill;
+  document.getElementById('dsManualSearchOverlay').style.display='block';
+  document.getElementById('dsManualSearchBox').style.display='block';
+  dsManualSearchInputHandler();
+  if(inp){ inp.focus(); inp.select(); }
+}
+
+function dsCloseManualSearch(){
+  document.getElementById('dsManualSearchOverlay').style.display='none';
+  document.getElementById('dsManualSearchBox').style.display='none';
+  _dsEditingRow=null;
+}
+
+function dsManualSearchInputHandler(){
+  var inp=document.getElementById('dsManualSearchInput'); var val=inp?inp.value:'';
+  var listBox=document.getElementById('dsManualSearchList'); if(!listBox) return;
+  var cands=dsSearchCandidates(val, 8);
+  if(!cands.length){ listBox.innerHTML='<div style="color:#999;padding:6px;">Không tìm thấy gợi ý — thử gõ tên ngắn/khác đi.</div>'; return; }
+  var html='';
+  cands.forEach(function(c){
+    var pct=Math.round(c.score*100);
+    html+='<div onclick="dsApplyManualMatch(\''+String(c.p.c).replace(/'/g,"\\'")+'\')" style="padding:7px 6px;border-bottom:1px solid #eee;cursor:pointer;">'
+      +'<b>'+escapeHtml(c.p.n)+'</b> <span style="color:#1f5c8a;font-size:12px;">('+pct+'% khớp)</span><br>'
+      +'<code style="font-size:11px;color:#888;">'+escapeHtml(c.p.c)+'</code> · Giá bán: '+formatPrice(c.p.p||0)
+      +'</div>';
+  });
+  listBox.innerHTML=html;
+}
+
+function dsApplyManualMatch(code){
+  if(!_dsEditingRow || !_dsLastResult) return;
+  var p = appData.s.find(function(x){ return x.c===code; });
+  if(!p){ alert('❌ Không tìm thấy sản phẩm.'); return; }
+  var res=_dsLastResult, type=_dsEditingRow.type, idx=_dsEditingRow.idx;
+  var sup = dsSuppliersFor(p.c);
+  if(type==='m'){
+    var m=res.matched[idx]; if(!m) return;
+    m.ourName=p.n; m.code=p.c; m.cost=p.v||0; m.price=p.p||0; m.suppliers=sup; m.score=1; m._manual=true;
+  } else {
+    var u=res.unmatched[idx]; if(!u) return;
+    var newM={ customerName:u.customerName, ourName:p.n, code:p.c, cost:p.v||0, price:p.p||0, suppliers:sup, score:1, _manual:true };
+    res.unmatched.splice(idx,1);
+    res.matched.push(newM);
+  }
+  dsCloseManualSearch();
+  dsRenderResult(res);
+}
+
+function dsAddToQuote(type, idx){
+  var res=_dsLastResult; if(!res) return;
+  var item = type==='m' ? res.matched[idx] : null;
+  if(!item || !item.code){ alert('❌ Chưa xác định được sản phẩm — bấm "🔍 Sửa" để tìm & chọn trước.'); return; }
+  var pIdx = appData.s.findIndex(function(p){ return p.c===item.code; });
+  if(pIdx<0){ alert('❌ Không tìm thấy sản phẩm trong kho.'); return; }
+  selectProduct(pIdx);
+  item._added=(item._added||0)+1;
+  dsRenderResult(res);
+}
+
+function dsGotoQuoteTab(){
+  document.querySelectorAll('.tab-content').forEach(function(el){ el.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(el){ el.classList.remove('active'); });
+  var t1=document.getElementById('tab1'); if(t1) t1.classList.add('active');
+  var btns=document.querySelectorAll('.tab-btn'); if(btns[1]) btns[1].classList.add('active');
+  updateQuoteTable();
+  window.scrollTo(0,0);
+}
+
+function dsRenderQuotePreview(){
+  var box=document.getElementById('dsQuotePreview'); if(!box) return;
+  var items=(typeof quoteData!=='undefined' && quoteData.items) ? quoteData.items : [];
+  if(!items.length){ box.style.display='none'; box.innerHTML=''; return; }
+  box.style.display='block';
+  var html='<div style="font-weight:bold;margin-bottom:6px;">🧾 Phiếu báo giá đang tạo ('+items.length+' sản phẩm)</div>';
+  html+='<table style="width:100%;font-size:13px;"><thead><tr><th style="text-align:left;">Tên</th><th>SL</th><th>Giá bán</th><th>Thành tiền</th></tr></thead><tbody>';
+  var total=0;
+  items.forEach(function(it){
+    var lineTotal=(it.price||0)*(it.qty||1);
+    total+=lineTotal;
+    html+='<tr><td>'+escapeHtml(it.name)+'</td><td class="text-right">'+(it.qty||1)+'</td><td class="text-right">'+formatPrice(it.price||0)+'</td><td class="text-right">'+formatPrice(lineTotal)+'</td></tr>';
+  });
+  html+='</tbody></table>';
+  html+='<div style="text-align:right;font-weight:bold;margin-top:6px;">Tổng: '+formatPrice(total)+'</div>';
+  html+='<button onclick="dsGotoQuoteTab()" style="margin-top:8px;">✏️ Sửa trong Báo giá</button>';
+  box.innerHTML=html;
+}
+
 function dsRenderResult(res){
   _dsLastResult=res;
   var html='';
   html+='<h3 style="margin-top:6px;">✅ Danh sách 1: Đã có / đã từng mua ('+res.matched.length+' sản phẩm)</h3>';
   if(!res.matched.length){ html+='<p style="color:#999;">Không có sản phẩm nào khớp.</p>'; }
   else{
-    html+='<table><thead><tr><th>Tên khách gửi</th><th>Tên trong kho (mã)</th><th>Giá nhập</th><th>Giá bán</th><th>Nhà cung cấp (giá thấp → cao)</th></tr></thead><tbody>';
-    res.matched.forEach(function(m){
-      var supHtml = m.suppliers.length ? m.suppliers.map(function(s,i){ return (i+1)+'. '+escapeHtml(s.ncc)+': <b>'+formatPrice(s.gia)+'</b>'; }).join('<br>') : '<span style="color:#999;">(chưa có dữ liệu NCC)</span>';
-      html+='<tr><td>'+escapeHtml(m.customerName)+'</td><td>'+escapeHtml(m.ourName)+'<br><code style="font-size:11px;color:#888;">'+escapeHtml(m.code)+'</code></td>'
+    html+='<table><thead><tr><th>Tên khách gửi</th><th>Tên trong kho (mã)</th><th>Giá nhập</th><th>Giá bán</th><th>Nhà cung cấp (giá thấp → cao)</th><th>Thao tác</th></tr></thead><tbody>';
+    res.matched.forEach(function(m,i){
+      var supHtml = m.suppliers.length ? m.suppliers.map(function(s,si){ return (si+1)+'. '+escapeHtml(s.ncc)+': <b>'+formatPrice(s.gia)+'</b>'; }).join('<br>') : '<span style="color:#999;">(chưa có dữ liệu NCC)</span>';
+      var dimStyle = m._added ? ' style="opacity:.5;"' : '';
+      html+='<tr'+dimStyle+'><td>'+escapeHtml(m.customerName)+'</td><td>'+escapeHtml(m.ourName)+'<br><code style="font-size:11px;color:#888;">'+escapeHtml(m.code)+'</code></td>'
         +'<td class="text-right">'+(m.cost?formatPrice(m.cost):'—')+'</td>'
         +'<td class="text-right">'+(m.price?formatPrice(m.price):'—')+'</td>'
-        +'<td>'+supHtml+'</td></tr>';
+        +'<td>'+supHtml+'</td>'
+        +'<td style="white-space:nowrap;"><button onclick="dsOpenManualSearch(\'m\','+i+')" style="font-size:12px;padding:4px 7px;">🔍 Sửa</button> '
+        +'<button onclick="dsAddToQuote(\'m\','+i+')" style="font-size:12px;padding:4px 7px;background:#27ae60;">📋 Báo giá'+(m._added?' ✓':'')+'</button></td></tr>';
     });
     html+='</tbody></table>';
   }
   html+='<h3 style="margin-top:16px;">❌ Danh sách 2: Chưa từng mua ('+res.unmatched.length+' sản phẩm)</h3>';
   if(!res.unmatched.length){ html+='<p style="color:#999;">Không có.</p>'; }
   else{
-    html+='<table><thead><tr><th>STT</th><th>Tên khách gửi</th><th>Gợi ý gần giống nhất trong kho (nếu có)</th><th>Độ khớp</th></tr></thead><tbody>';
+    html+='<table><thead><tr><th>STT</th><th>Tên khách gửi</th><th>Gợi ý gần giống nhất trong kho (nếu có)</th><th>Độ khớp</th><th>Thao tác</th></tr></thead><tbody>';
     res.unmatched.forEach(function(u,i){
       var pct = Math.round((u.suggestScore||0)*100);
       var sugg = u.suggestName ? (escapeHtml(u.suggestName)+' <code style="font-size:11px;color:#888;">'+escapeHtml(u.suggestCode)+'</code>') : '<span style="color:#999;">(không có gợi ý)</span>';
-      html+='<tr><td>'+(i+1)+'</td><td>'+escapeHtml(u.customerName)+'</td><td>'+sugg+'</td><td class="text-right">'+(u.suggestName?pct+'%':'—')+'</td></tr>';
+      html+='<tr><td>'+(i+1)+'</td><td>'+escapeHtml(u.customerName)+'</td><td>'+sugg+'</td><td class="text-right">'+(u.suggestName?pct+'%':'—')+'</td>'
+        +'<td style="white-space:nowrap;"><button onclick="dsOpenManualSearch(\'u\','+i+')" style="font-size:12px;padding:4px 7px;">🔍 Tìm &amp; chọn</button></td></tr>';
     });
     html+='</tbody></table>';
   }
   var box=document.getElementById('dsResult'); if(box) box.innerHTML=html;
   var btn=document.getElementById('dsExportBtn'); if(btn) btn.disabled=false;
+  dsRenderQuotePreview();
 }
 
 function dsRunFromPaste(){
