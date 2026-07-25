@@ -3264,63 +3264,78 @@ function exportQuoteData() {
   });
 }
 
+/* Xuất Excel HOÀN TOÀN PHÍA CLIENT (SheetJS, đã nhúng sẵn) — KHÔNG gọi server nữa (Render không có LibreOffice nên
+   endpoint /api/export-quote cũ hay lỗi/treo). File Excel này dùng NỘI BỘ nên giữ đủ Giá gốc/Lợi nhuận khi đăng nhập Chủ. */
 function exportToExcelFile() {
   if (quoteData.items.length === 0) {
     alert('❌ Vui lòng thêm sản phẩm vào báo giá');
     return;
   }
+  if (typeof XLSX === 'undefined') {
+    alert('❌ Chưa tải được thư viện xuất Excel (cần mạng). Hãy tải lại trang rồi thử lại, hoặc dùng nút "Xuất báo giá PDF".');
+    return;
+  }
+  var btn = (typeof event!=='undefined' && event) ? event.target : null;
+  var oldText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang xuất...'; }
+  try {
+    var owner = (typeof userData !== 'undefined' && userData.mode === 'owner');
+    var g = function(id){ var e = document.getElementById(id); return e ? e.value : ''; };
+    var qn = g('quoteNo') || ('BG-' + Date.now());
+    var qd = g('quoteDate');
+    var cust = g('customerName'), addr = g('customerAddress'), phone = g('customerPhone');
 
-  let btn = event.target;
-  btn.disabled = true;
-  btn.textContent = '⏳ Đang xuất...';
+    var head = ['STT', 'Tên sản phẩm', 'Mã', 'ĐVT', 'SL', 'Đơn giá bán'];
+    if (owner) head.push('Giá gốc');
+    head.push('Thành tiền');
+    if (owner) head.push('Lợi nhuận', '% LN');
+    head.push('Ghi chú');
 
-  let exportData = {
-    quoteNo: document.getElementById('quoteNo').value || ('BG-' + Date.now()),
-    quoteDate: document.getElementById('quoteDate').value,
-    customer: document.getElementById('customerName').value,
-    address: document.getElementById('customerAddress').value,
-    phone: document.getElementById('customerPhone').value,
-    items: quoteData.items.map(item => ({
-      name: item.name,
-      code: item.code,
-      description: item.description || '',
-      unit: item.unit,
-      qty: item.qty,
-      price: item.price,
-      total: item.qty * item.price,
-      note: item.note || '',
-      image: item.img || ''
-    }))
-  };
+    var aoa = [
+      ['BẢNG BÁO GIÁ'],
+      ['Số báo giá:', qn, '', 'Ngày:', qd],
+      ['Khách hàng:', cust],
+      ['Địa chỉ:', addr],
+      ['Điện thoại:', phone],
+      [],
+      head
+    ];
 
-  // Gửi tới server để xuất file
-  fetch('/api/export-quote', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(exportData)
-  })
-  .then(response => response.json())
-  .then(data => {
-    btn.disabled = false;
-    btn.textContent = '📥 Xuất báo giá Excel';
+    var total = 0, totalCost = 0, totalProfit = 0;
+    quoteData.items.forEach(function (it, i) {
+      var qty = it.qty || 0, price = it.price || 0, cost = it.cost || 0;
+      var amt = qty * price, profit = (price - cost) * qty;
+      total += amt; totalCost += cost * qty; totalProfit += profit;
+      var row = [i + 1, it.name || '', it.code || '', it.unit || '', qty, price];
+      if (owner) row.push(cost);
+      row.push(amt);
+      if (owner) row.push(profit, cost > 0 ? Math.round((price - cost) / cost * 100) + '%' : '');
+      row.push(it.note || '');
+      aoa.push(row);
+    });
 
-    if (data.success) {
-      alert('✅ Xuất thành công!\n\n' + data.message);
-      // Download file
-      if (data.file) {
-        window.open('/api/download/' + encodeURIComponent(data.file), '_blank');
-      }
-    } else {
-      alert('❌ Lỗi: ' + (data.error || 'Không biết lỗi gì'));
+    var amtIdx = head.indexOf('Thành tiền');
+    var totalRow = new Array(head.length).fill('');
+    totalRow[amtIdx - 1] = 'TỔNG CỘNG';
+    totalRow[amtIdx] = total;
+    if (owner) {
+      var profitIdx = head.indexOf('Lợi nhuận');
+      totalRow[profitIdx] = totalProfit;
+      totalRow[profitIdx + 1] = totalCost > 0 ? Math.round(totalProfit / totalCost * 100) + '%' : '';
     }
-  })
-  .catch(error => {
-    btn.disabled = false;
-    btn.textContent = '📥 Xuất báo giá Excel';
-    alert('❌ Lỗi kết nối: ' + error.message + '\n\nCó thể server chưa chạy. Hãy mở Command Prompt rồi chạy:\npython3 server.py');
-  });
+    aoa.push([]);
+    aoa.push(totalRow);
+
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = head.map(function (h) { return { wch: (h === 'Tên sản phẩm') ? 32 : 14 }; });
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'BaoGia');
+    var fname = 'BaoGia_' + (cust || qn).toString().replace(/[^0-9A-Za-zÀ-ỹ]+/g, '_').replace(/^_+|_+$/g, '') + '.xlsx';
+    XLSX.writeFile(wb, fname);
+  } catch (e) {
+    alert('❌ Lỗi xuất Excel: ' + (e && e.message || e));
+  }
+  if (btn) { btn.disabled = false; btn.textContent = oldText; }
 }
 
 
