@@ -59,6 +59,15 @@ input[type="number"] { width: 80px; }
 .addr-slip .divider { border-top: 2px dashed #666; margin: 18px 0; }
 .kh-results div:hover { background: #f0f0f0; }
 
+/* ===== ICON GRID CHO TAB CÔNG CỤ — 2026-07-25 ===== */
+.tool-ic-grid{ display:flex; flex-wrap:wrap; gap:10px; margin:4px 0 6px; }
+.tool-ic-btn{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; width:96px; height:76px; background:#f4f8fc; color:#1f5c8a; border:1px solid #d8e6f2; border-radius:10px; cursor:pointer; font-weight:bold; padding:6px; }
+.tool-ic-btn:hover{ background:#e6f0fa; }
+.tool-ic-btn.active{ background:#1f5c8a; color:#fff; border-color:#1f5c8a; }
+.tool-ic-emoji{ font-size:22px; }
+.tool-ic-label{ font-size:11px; line-height:1.2; text-align:center; }
+.tools-panel{ margin-top:4px; }
+
 /* ===== GIAO DIỆN GỌN + NỀN XANH (giống logo) + MOBILE — 2026-07-24 ===== */
 body{ background:linear-gradient(160deg,#123f63 0%,#1f5c8a 50%,#2c7fb8 100%); background-attachment:fixed; }
 header{ background:#0f3554; }
@@ -227,7 +236,10 @@ header p{ font-size:12px; opacity:.9; }
 
     <!-- TAB 3: TOOLS -->
     <div id="tab3" class="tab-content">
-      <div class="card">
+      <div class="tool-ic-grid"><button type="button" class="tool-ic-btn" id="toolIcBtn1" onclick="toolsShowPanel(1)"><span class="tool-ic-emoji">🔀</span><span class="tool-ic-label">Gộp SP trùng</span></button><button type="button" class="tool-ic-btn" id="toolIcBtn2" onclick="toolsShowPanel(2)"><span class="tool-ic-emoji">🏷️</span><span class="tool-ic-label">So sánh giá NCC</span></button><button type="button" class="tool-ic-btn" id="toolIcBtn3" onclick="toolsShowPanel(3)"><span class="tool-ic-emoji">⬆️</span><span class="tool-ic-label">Nhập giá NCC</span></button><button type="button" class="tool-ic-btn" id="toolIcBtn4" onclick="toolsShowPanel(4)"><span class="tool-ic-emoji">🔧</span><span class="tool-ic-label">Tương thích máy</span></button><button type="button" class="tool-ic-btn" id="toolIcBtn5" onclick="toolsShowPanel(5)"><span class="tool-ic-emoji">💱</span><span class="tool-ic-label">Landed cost TQ</span></button><button type="button" class="tool-ic-btn" id="toolIcBtn6" onclick="toolsShowPanel(6)"><span class="tool-ic-emoji">⚠️</span><span class="tool-ic-label">Tồn kho thấp</span></button><button type="button" class="tool-ic-btn" id="toolIcBtn7" onclick="toolsShowPanel(7)"><span class="tool-ic-emoji">🧾</span><span class="tool-ic-label">Đối soát SP khách</span></button></div>
+      <div id="toolIcHint" style="color:#888;font-size:13px;margin:4px 0 14px;">👆 Bấm vào 1 icon ở trên để mở chức năng.</div>
+
+      <div id="toolPanel1" class="tools-panel" style="display:none;"><div class="card">
         <h2>🔀 Rà soát &amp; gộp sản phẩm nghi trùng <span style="font-size:12px;color:#999;font-weight:normal;">(chỉ Chủ)</span></h2>
         <p style="color:#666;font-size:13px;margin-bottom:10px;">Tự quét toàn kho tìm các sản phẩm <strong>trùng/gần trùng tên nhưng khác mã</strong> (1 sản phẩm bị tạo thành nhiều mã). Chọn <strong>mã giữ lại</strong> cho từng nhóm rồi bấm <em>Xuất quyết định gộp</em> để tải file gửi lại — chưa gộp tự động, Chủ duyệt trước.</p>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
@@ -236,9 +248,9 @@ header p{ font-size:12px; opacity:.9; }
           <label style="font-size:13px;display:flex;align-items:center;gap:5px;"><input type="checkbox" id="mergeFuzzy" onchange="renderMergeReview()"> Bao gồm nghi trùng gần đúng</label>
         </div>
         <div id="mergeReviewResult"></div>
-      </div>
+      </div></div>
 
-      <div class="card">
+      <div id="toolPanel2" class="tools-panel" style="display:none;"><div class="card">
         <h2>🏷️ So sánh giá nhà cung cấp <span style="font-size:12px;color:#999;font-weight:normal;">(chỉ Chủ)</span></h2>
         <p style="color:#666;font-size:13px;margin-bottom:10px;">So sánh giá CÙNG một mặt hàng giữa các NCC (Đài Nhật, Đông Dương, Thanh Hoa, Đại Đồng, Phồn Thịnh...). Mặt hàng có ≥2 NCC sẽ hiện NCC rẻ nhất &amp; mức tiết kiệm.</p>
         <div class="form-group" style="margin-bottom:8px;">
@@ -249,24 +261,24 @@ header p{ font-size:12px; opacity:.9; }
         <hr style="margin:12px 0;border:none;border-top:1px solid #eee;">
         <div style="margin-bottom:10px;"><button onclick="exportSupplierCompare()" style="background:#2e7d32;">📤 Xuất ma trận so sánh (CSV)</button></div>
         <div id="supCompareResult"></div>
-      </div>
+      </div></div>
 
-      <div class="card">
+      <div id="toolPanel3" class="tools-panel" style="display:none;"><div class="card">
         <h2>⬆️ Nhập nhanh giá NCC <span style="font-size:12px;color:#999;font-weight:normal;">(chỉ Chủ)</span></h2>
         <p style="color:#666;font-size:13px;margin-bottom:10px;">Thả FILE Excel báo giá của 1 NCC (hoặc dán bảng copy từ Excel) → app tự khớp mã &amp; thêm giá vào bảng so sánh. Lưu trong máy này (localStorage).</p>
         <div id="nccImportBox"></div>
-      </div>
+      </div></div>
 
-      <div class="card">
+      <div id="toolPanel4" class="tools-panel" style="display:none;"><div class="card">
         <h2>🔧 Tra cứu tương thích theo máy</h2>
         <div class="form-group">
           <label>Chọn loại máy:</label>
           <select id="machineSelect" onchange="renderMachineCompat()"></select>
         </div>
         <div id="machineCompatResult"></div>
-      </div>
+      </div></div>
 
-      <div class="card">
+      <div id="toolPanel5" class="tools-panel" style="display:none;"><div class="card">
         <h2>💱 Tính Landed Cost hàng nhập Trung Quốc</h2>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
           <div class="form-group">
@@ -299,18 +311,18 @@ header p{ font-size:12px; opacity:.9; }
           </div>
         </div>
         <div id="lcResult" style="margin-top:15px;padding:15px;background:#f9f9f9;border-radius:6px;"></div>
-      </div>
+      </div></div>
 
-      <div class="card">
+      <div id="toolPanel6" class="tools-panel" style="display:none;"><div class="card">
         <h2>⚠️ Cảnh báo tồn kho thấp</h2>
         <div class="form-group" style="max-width:200px;">
           <label>Ngưỡng tồn (≤):</label>
           <input type="number" id="lowStockThreshold" value="3" oninput="renderLowStock()">
         </div>
         <div id="lowStockResult"></div>
-      </div>
+      </div></div>
 
-      <div class="card">
+      <div id="toolPanel7" class="tools-panel" style="display:none;"><div class="card">
         <h2>🧾 Đối soát sản phẩm khách gửi <span style="font-size:12px;color:#999;font-weight:normal;">(khách gửi 200 SP → tự tìm trong kho + giá NCC)</span></h2>
         <p style="color:#666;font-size:13px;margin-bottom:10px;">Dán danh sách hoặc nạp file Excel/CSV/PDF khách gửi (mỗi dòng 1 sản phẩm). App tự dò tên gần đúng trong kho (không cần khớp 100%), liệt kê giá nhập/giá bán + nhà cung cấp — nếu có nhiều NCC thì xếp theo giá thấp → cao.</p>
         <textarea id="dsPaste" placeholder="Dán danh sách sản phẩm khách gửi (mỗi dòng 1 sản phẩm)..." style="width:100%;height:100px;box-sizing:border-box;"></textarea>
@@ -322,7 +334,7 @@ header p{ font-size:12px; opacity:.9; }
         </div>
         <div id="dsStatus" style="margin-top:8px;font-size:13px;color:#666;"></div>
         <div id="dsResult" style="margin-top:10px;overflow-x:auto;"></div>
-      </div>
+      </div></div>
     </div>
     <div id="tab4" class="tab-content">
       <div class="card">
@@ -3665,6 +3677,16 @@ function dsExportExcel(){
   var ws2=XLSX.utils.aoa_to_sheet(rows2);
   XLSX.utils.book_append_sheet(wb, ws2, 'Chua co');
   XLSX.writeFile(wb, 'DoiSoat_SanPham_'+Date.now()+'.xlsx');
+}
+
+
+/* ===== ICON GRID TAB CÔNG CỤ (2026-07-25): bấm icon mới hiện chức năng đó, không đụng logic bên trong ===== */
+function toolsShowPanel(n){
+  for(var i=1;i<=7;i++){
+    var p=document.getElementById('toolPanel'+i); if(p) p.style.display=(i===n?'block':'none');
+    var b=document.getElementById('toolIcBtn'+i); if(b) b.classList.toggle('active', i===n);
+  }
+  var hint=document.getElementById('toolIcHint'); if(hint) hint.style.display='none';
 }
 
 /* Ẩn dropdown chọn khách khi bấm RA NGOÀI (thay onblur hay ẩn nhầm khi đang gõ) */
