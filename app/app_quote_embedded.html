@@ -3311,9 +3311,9 @@ function exportBaoGiaExcel(){
     var N=cols.length, last=String.fromCharCode(64+N), TNR={name:'Times New Roman'};
     var thin={style:'thin',color:{argb:'FF333333'}}, allb={top:thin,left:thin,bottom:thin,right:thin};
     try{ if(typeof HT_LOGO!=='undefined'&&HT_LOGO){ var logoId=wb.addImage({base64:HT_LOGO,extension:'png'}); ws.addImage(logoId,{tl:{col:0.15,row:0.15},ext:{width:60,height:60}}); } }catch(e){}
-    ws.mergeCells('C1:'+last+'1'); var c1=ws.getCell('C1'); c1.value='CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART'; c1.font=Object.assign({},TNR,{bold:true,size:12}); c1.alignment={horizontal:'center',vertical:'middle'};
-    ws.mergeCells('C2:'+last+'2'); var c2=ws.getCell('C2'); c2.value='Địa chỉ: Khu 13, Hoàng Xá, Thanh Thủy, Phú Thọ'; c2.font=Object.assign({},TNR,{size:10}); c2.alignment={horizontal:'center'};
-    ws.mergeCells('C3:'+last+'3'); var c3=ws.getCell('C3'); c3.value='Điện thoại: 0982829806  |  MST: 2601158676'; c3.font=Object.assign({},TNR,{size:10}); c3.alignment={horizontal:'center'};
+    ws.mergeCells('A1:'+last+'1'); var c1=ws.getCell('A1'); c1.value='CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART'; c1.font=Object.assign({},TNR,{bold:true,size:12}); c1.alignment={horizontal:'center',vertical:'middle'};
+    ws.mergeCells('A2:'+last+'2'); var c2=ws.getCell('A2'); c2.value='Địa chỉ: Khu 13, Hoàng Xá, Thanh Thủy, Phú Thọ'; c2.font=Object.assign({},TNR,{size:10}); c2.alignment={horizontal:'center'};
+    ws.mergeCells('A3:'+last+'3'); var c3=ws.getCell('A3'); c3.value='Điện thoại: 0982829806  |  MST: 2601158676'; c3.font=Object.assign({},TNR,{size:10}); c3.alignment={horizontal:'center'};
     ws.getRow(1).height=20; ws.getRow(2).height=15; ws.getRow(3).height=15; ws.getRow(4).height=6;
     for(var i=1;i<=N;i++){ ws.getCell(4,i).border={bottom:{style:'medium',color:{argb:'FF333333'}}}; }
     ws.mergeCells('A5:'+last+'5'); var t=ws.getCell('A5'); t.value='BẢNG BÁO GIÁ'; t.font=Object.assign({},TNR,{bold:true,size:20}); t.alignment={horizontal:'center'}; ws.getRow(5).height=28;
@@ -3338,7 +3338,7 @@ function exportBaoGiaExcel(){
     });
     row++;
     var fullLine=function(text,opts){ opts=opts||{}; ws.mergeCells('A'+row+':'+last+row); var c=ws.getCell('A'+row); c.value=text; c.font=Object.assign({},TNR,{size:opts.size||11,bold:!!opts.bold,italic:!!opts.italic,underline:!!opts.underline}); c.alignment={horizontal:opts.align||'left'}; row++; };
-    var vatNote=(vat>0?'Đơn giá trên là giá đã bao gồm Thuế GTGT.':'Đơn giá trên là giá chưa bao gồm Thuế GTGT.');
+    var vatNote='Đơn giá trên là giá chưa bao gồm Thuế GTGT.';
     fullLine('Lưu ý:',{bold:true,underline:true});
     [vatNote,'Bên bán có trách nhiệm xuất hóa đơn GTGT cho bên mua.','Giao hàng: Theo thỏa thuận.','Thanh toán: Theo thỏa thuận.','Báo giá có hiệu lực trong vòng 15 ngày kể từ ngày báo giá.'].forEach(function(tx,i){ fullLine((i+1)+'/ '+tx,{}); });
     row++;
@@ -3350,7 +3350,7 @@ function exportBaoGiaExcel(){
     row++;
     ws.mergeCells('E'+row+':'+last+row); var sc=ws.getCell('E'+row); sc.value='ĐẠI DIỆN HƯNG THỊNH SMART'; sc.font=Object.assign({},TNR,{bold:true,size:11}); sc.alignment={horizontal:'center'}; row++;
     ws.mergeCells('E'+row+':'+last+row); var sc2=ws.getCell('E'+row); sc2.value='(Ký, ghi rõ họ tên, đóng dấu)'; sc2.font=Object.assign({},TNR,{italic:true,size:10}); sc2.alignment={horizontal:'center'}; row++;
-    try{ if(signStamp){ var ssId=wb.addImage({base64:signStamp,extension:'png'}); ws.addImage(ssId,{tl:{col:(N-3)+0.2,row:row-1+0.1},ext:{width:150,height:105}}); ws.getRow(row).height=80; ws.getRow(row+1).height=20; } }catch(e){}
+    try{ if(signStamp){ var ssId=wb.addImage({base64:signStamp,extension:'png'}); var _iw=150,_cwf=function(w){return w*7+5;},_rpx=0; for(var _k=4;_k<N;_k++){_rpx+=_cwf(cols[_k]);} var _off=Math.max(0,(_rpx-_iw)/2),_acc=0,_cx=4,_fr=0; while(_cx<N){var _cp=_cwf(cols[_cx]); if(_acc+_cp>=_off){_fr=(_off-_acc)/_cp; break;} _acc+=_cp; _cx++;} ws.addImage(ssId,{tl:{col:_cx+_fr,row:row-1+0.1},ext:{width:_iw,height:105}}); ws.getRow(row).height=80; ws.getRow(row+1).height=20; } }catch(e){}
     return wb.xlsx.writeBuffer();
   }).then(function(buf){
     var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
