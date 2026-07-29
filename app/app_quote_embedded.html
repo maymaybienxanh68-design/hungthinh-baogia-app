@@ -221,8 +221,9 @@ header p{ font-size:12px; opacity:.9; }
 
         <button onclick="saveQuote()">💾 Lưu báo giá</button>
         <button class="secondary" onclick="exportQuoteData()">📤 Xuất dữ liệu (PDF/Excel)</button>
-        <button style="background: #27ae60;" onclick="exportToExcelFile()">📥 Xuất báo giá Excel</button>
+        <button style="background: #27ae60;" onclick="exportBaoGiaExcel()">📥 Xuất báo giá Excel</button>
         <button style="background:#c0392b;font-weight:bold;" onclick="printBaoGiaOffline()">📄 Xuất báo giá PDF</button>
+        <button style="background:#e67e22;font-weight:bold;" onclick="printBaoGiaOffline({noTotals:true})">📄 Xuất PDF (không tổng)</button>
       </div>
     </div>
 
@@ -3264,78 +3265,160 @@ function exportQuoteData() {
   });
 }
 
-/* Xuất Excel HOÀN TOÀN PHÍA CLIENT (SheetJS, đã nhúng sẵn) — KHÔNG gọi server nữa (Render không có LibreOffice nên
-   endpoint /api/export-quote cũ hay lỗi/treo). File Excel này dùng NỘI BỘ nên giữ đủ Giá gốc/Lợi nhuận khi đăng nhập Chủ. */
+/* ===== Xuất báo giá Excel (.xlsx thật, giống PDF: logo + chữ ký + con dấu; KHÔNG có dòng tổng/bằng chữ) ===== */
+function _htLoadExcelJS(){ return new Promise(function(res,rej){
+  if(window.ExcelJS) return res(window.ExcelJS);
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+  s.onload=function(){ window.ExcelJS?res(window.ExcelJS):rej(new Error('no ExcelJS')); };
+  s.onerror=function(){ rej(new Error('CDN')); };
+  document.head.appendChild(s);
+}); }
+function _htCompositeSignStamp(){ return new Promise(function(res){
+  try{
+    if(typeof HT_STAMP==='undefined'&&typeof HT_SIG==='undefined'){ return res(null); }
+    var st=new Image(), sg=new Image(), n=0;
+    var done=function(){ if(++n<2) return;
+      try{
+        var W=300,H=210, c=document.createElement('canvas'); c.width=W; c.height=H; var x=c.getContext('2d');
+        if(st.naturalWidth>0){ var sw=170, sh=sw*(st.naturalHeight/st.naturalWidth); x.drawImage(st,(W-sw)/2,(H-sh)/2,sw,sh); }
+        if(sg.naturalWidth>0){ var gw=190, gh=gw*(sg.naturalHeight/sg.naturalWidth); x.drawImage(sg,(W-gw)/2,(H-gh)/2,gw,gh); }
+        res(c.toDataURL('image/png'));
+      }catch(e){ res(null); }
+    };
+    st.onload=done; st.onerror=done; sg.onload=done; sg.onerror=done;
+    st.src=(typeof HT_STAMP!=='undefined')?HT_STAMP:''; sg.src=(typeof HT_SIG!=='undefined')?HT_SIG:'';
+  }catch(e){ res(null); }
+}); }
+function exportBaoGiaExcel(){
+  if(typeof quoteData==='undefined'||!quoteData.items||quoteData.items.length===0){ alert('❌ Chưa có sản phẩm trong báo giá'); return; }
+  try{ autoArchiveQuote(); }catch(e){}
+  var ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;z-index:99999;'; ov.textContent='⏳ Đang tạo file Excel...'; document.body.appendChild(ov);
+  var fin=function(){ try{document.body.removeChild(ov);}catch(e){} };
+  var g=function(id){var e=document.getElementById(id);return e?e.value:'';};
+  var qn=g('quoteNo')||('BG-'+Date.now()), qd=g('quoteDate');
+  var cust=g('customerName'), addr=g('customerAddress'), phone=g('customerPhone');
+  var dstr=''; if(qd){var pp=qd.split('-'); if(pp.length===3)dstr='Ngày '+parseInt(pp[2],10)+' tháng '+parseInt(pp[1],10)+' năm '+pp[0];}
+  var items=quoteData.items, hasDesc=items.some(function(it){return (it.description||'').trim();});
+  var vat=parseFloat(g('quoteVat')); if(!(vat>=0)) vat=8;
+  Promise.all([_htLoadExcelJS(), _htCompositeSignStamp()]).then(function(rr){
+    var EJS=rr[0], signStamp=rr[1];
+    var wb=new EJS.Workbook();
+    var ws=wb.addWorksheet('Bao gia',{views:[{showGridLines:false}],
+      pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:0.4,right:0.4,top:0.4,bottom:0.4,header:0,footer:0}}});
+    var cols=hasDesc?[5,34,20,7,9,14,15,12]:[5,42,9,9,15,16,14];
+    ws.columns=cols.map(function(w){return {width:w};});
+    var N=cols.length, last=String.fromCharCode(64+N), TNR={name:'Times New Roman'};
+    var thin={style:'thin',color:{argb:'FF333333'}}, allb={top:thin,left:thin,bottom:thin,right:thin};
+    try{ if(typeof HT_LOGO!=='undefined'&&HT_LOGO){ var logoId=wb.addImage({base64:HT_LOGO,extension:'png'}); ws.addImage(logoId,{tl:{col:0.15,row:0.15},ext:{width:60,height:60}}); } }catch(e){}
+    ws.mergeCells('C1:'+last+'1'); var c1=ws.getCell('C1'); c1.value='CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART'; c1.font=Object.assign({},TNR,{bold:true,size:12}); c1.alignment={horizontal:'center',vertical:'middle'};
+    ws.mergeCells('C2:'+last+'2'); var c2=ws.getCell('C2'); c2.value='Địa chỉ: Khu 13, Hoàng Xá, Thanh Thủy, Phú Thọ'; c2.font=Object.assign({},TNR,{size:10}); c2.alignment={horizontal:'center'};
+    ws.mergeCells('C3:'+last+'3'); var c3=ws.getCell('C3'); c3.value='Điện thoại: 0982829806  |  MST: 2601158676'; c3.font=Object.assign({},TNR,{size:10}); c3.alignment={horizontal:'center'};
+    ws.getRow(1).height=20; ws.getRow(2).height=15; ws.getRow(3).height=15; ws.getRow(4).height=6;
+    for(var i=1;i<=N;i++){ ws.getCell(4,i).border={bottom:{style:'medium',color:{argb:'FF333333'}}}; }
+    ws.mergeCells('A5:'+last+'5'); var t=ws.getCell('A5'); t.value='BẢNG BÁO GIÁ'; t.font=Object.assign({},TNR,{bold:true,size:20}); t.alignment={horizontal:'center'}; ws.getRow(5).height=28;
+    ws.mergeCells('A6:'+last+'6'); var dd=ws.getCell('A6'); dd.value=dstr; dd.font=Object.assign({},TNR,{italic:true,size:10}); dd.alignment={horizontal:'center'};
+    var kg=function(row,label,val){ ws.mergeCells('A'+row+':'+last+row); var c=ws.getCell('A'+row); c.value={richText:[{text:label,font:Object.assign({},TNR,{bold:true,size:11})},{text:val||'',font:Object.assign({},TNR,{size:11})}]}; c.alignment={horizontal:'left'}; };
+    kg(7,'Kính gửi: ',cust); kg(8,'Địa chỉ: ',addr); kg(9,'Điện thoại: ',phone); ws.getRow(10).height=4;
+    var hr=11, heads=hasDesc?['STT','Tên hàng hóa dịch vụ','Mô tả sản phẩm','ĐVT','Số lượng','Đơn giá (VNĐ)','Thành tiền (VNĐ)','Ghi chú']:['STT','Tên hàng hóa dịch vụ','ĐVT','Số lượng','Đơn giá (VNĐ)','Thành tiền (VNĐ)','Ghi chú'];
+    heads.forEach(function(h,i){ var c=ws.getCell(hr,i+1); c.value=h; c.font=Object.assign({},TNR,{bold:true,size:11}); c.alignment={horizontal:'center',vertical:'middle',wrapText:true}; c.border=allb; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE8EEF5'}}; });
+    ws.getRow(hr).height=22;
+    var row=hr+1;
+    items.forEach(function(it,idx){
+      var amt=(it.qty||0)*(it.price||0);
+      var vals=hasDesc?[idx+1,it.name||'',it.description||'',it.unit||'',it.qty||0,_fmtVN(it.price||0),_fmtVN(amt),it.note||'']:[idx+1,it.name||'',it.unit||'',it.qty||0,_fmtVN(it.price||0),_fmtVN(amt),it.note||''];
+      vals.forEach(function(v,i){ var c=ws.getCell(row,i+1); c.value=v; c.font=Object.assign({},TNR,{size:11}); c.border=allb; c.alignment={vertical:'middle',wrapText:true}; });
+      var ci={stt:1,unit:hasDesc?4:3,qty:hasDesc?5:4,price:hasDesc?6:5,amt:hasDesc?7:6};
+      ws.getCell(row,ci.stt).alignment={horizontal:'center',vertical:'middle'};
+      ws.getCell(row,ci.unit).alignment={horizontal:'center',vertical:'middle'};
+      ws.getCell(row,ci.qty).alignment={horizontal:'center',vertical:'middle'};
+      ws.getCell(row,ci.price).alignment={horizontal:'right',vertical:'middle'};
+      ws.getCell(row,ci.amt).alignment={horizontal:'right',vertical:'middle'};
+      row++;
+    });
+    row++;
+    var fullLine=function(text,opts){ opts=opts||{}; ws.mergeCells('A'+row+':'+last+row); var c=ws.getCell('A'+row); c.value=text; c.font=Object.assign({},TNR,{size:opts.size||11,bold:!!opts.bold,italic:!!opts.italic,underline:!!opts.underline}); c.alignment={horizontal:opts.align||'left'}; row++; };
+    var vatNote=(vat>0?'Đơn giá trên là giá đã bao gồm Thuế GTGT.':'Đơn giá trên là giá chưa bao gồm Thuế GTGT.');
+    fullLine('Lưu ý:',{bold:true,underline:true});
+    [vatNote,'Bên bán có trách nhiệm xuất hóa đơn GTGT cho bên mua.','Giao hàng: Theo thỏa thuận.','Thanh toán: Theo thỏa thuận.','Báo giá có hiệu lực trong vòng 15 ngày kể từ ngày báo giá.'].forEach(function(tx,i){ fullLine((i+1)+'/ '+tx,{}); });
+    row++;
+    fullLine('THÔNG TIN THANH TOÁN',{bold:true,size:12});
+    var pay=function(lbl,val){ ws.mergeCells('A'+row+':'+last+row); var c=ws.getCell('A'+row); c.value={richText:[{text:lbl,font:Object.assign({},TNR,{bold:true,size:11})},{text:val,font:Object.assign({},TNR,{size:11})}]}; row++; };
+    pay('Ngân hàng: ','MB Bank - Chi Nhánh Thanh Thủy');
+    pay('Chủ tài khoản: ','CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART');
+    pay('Số tài khoản: ','8090688688');
+    row++;
+    ws.mergeCells('E'+row+':'+last+row); var sc=ws.getCell('E'+row); sc.value='ĐẠI DIỆN HƯNG THỊNH SMART'; sc.font=Object.assign({},TNR,{bold:true,size:11}); sc.alignment={horizontal:'center'}; row++;
+    ws.mergeCells('E'+row+':'+last+row); var sc2=ws.getCell('E'+row); sc2.value='(Ký, ghi rõ họ tên, đóng dấu)'; sc2.font=Object.assign({},TNR,{italic:true,size:10}); sc2.alignment={horizontal:'center'}; row++;
+    try{ if(signStamp){ var ssId=wb.addImage({base64:signStamp,extension:'png'}); ws.addImage(ssId,{tl:{col:(N-3)+0.2,row:row-1+0.1},ext:{width:150,height:105}}); ws.getRow(row).height=80; ws.getRow(row+1).height=20; } }catch(e){}
+    return wb.xlsx.writeBuffer();
+  }).then(function(buf){
+    var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var url=URL.createObjectURL(blob);
+    var fn='BaoGia_'+((cust||qn).replace(/[^0-9A-Za-zÀ-ỹ]+/g,'_').replace(/^_+|_+$/g,'')||'HungThinh')+'.xlsx';
+    var a=document.createElement('a'); a.href=url; a.download=fn; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(url);},2000);
+    fin();
+  }).catch(function(err){ fin(); alert('❌ Không tạo được Excel: '+(err&&err.message||err)+'\nLần đầu xuất Excel cần có mạng để tải thư viện. Anh/chị có thể dùng nút Xuất PDF thay thế.'); });
+}
+
 function exportToExcelFile() {
   if (quoteData.items.length === 0) {
     alert('❌ Vui lòng thêm sản phẩm vào báo giá');
     return;
   }
-  if (typeof XLSX === 'undefined') {
-    alert('❌ Chưa tải được thư viện xuất Excel (cần mạng). Hãy tải lại trang rồi thử lại, hoặc dùng nút "Xuất báo giá PDF".');
-    return;
-  }
-  var btn = (typeof event!=='undefined' && event) ? event.target : null;
-  var oldText = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang xuất...'; }
-  try {
-    var owner = (typeof userData !== 'undefined' && userData.mode === 'owner');
-    var g = function(id){ var e = document.getElementById(id); return e ? e.value : ''; };
-    var qn = g('quoteNo') || ('BG-' + Date.now());
-    var qd = g('quoteDate');
-    var cust = g('customerName'), addr = g('customerAddress'), phone = g('customerPhone');
 
-    var head = ['STT', 'Tên sản phẩm', 'Mã', 'ĐVT', 'SL', 'Đơn giá bán'];
-    if (owner) head.push('Giá gốc');
-    head.push('Thành tiền');
-    if (owner) head.push('Lợi nhuận', '% LN');
-    head.push('Ghi chú');
+  let btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang xuất...';
 
-    var aoa = [
-      ['BẢNG BÁO GIÁ'],
-      ['Số báo giá:', qn, '', 'Ngày:', qd],
-      ['Khách hàng:', cust],
-      ['Địa chỉ:', addr],
-      ['Điện thoại:', phone],
-      [],
-      head
-    ];
+  let exportData = {
+    quoteNo: document.getElementById('quoteNo').value || ('BG-' + Date.now()),
+    quoteDate: document.getElementById('quoteDate').value,
+    customer: document.getElementById('customerName').value,
+    address: document.getElementById('customerAddress').value,
+    phone: document.getElementById('customerPhone').value,
+    items: quoteData.items.map(item => ({
+      name: item.name,
+      code: item.code,
+      description: item.description || '',
+      unit: item.unit,
+      qty: item.qty,
+      price: item.price,
+      total: item.qty * item.price,
+      note: item.note || '',
+      image: item.img || ''
+    }))
+  };
 
-    var total = 0, totalCost = 0, totalProfit = 0;
-    quoteData.items.forEach(function (it, i) {
-      var qty = it.qty || 0, price = it.price || 0, cost = it.cost || 0;
-      var amt = qty * price, profit = (price - cost) * qty;
-      total += amt; totalCost += cost * qty; totalProfit += profit;
-      var row = [i + 1, it.name || '', it.code || '', it.unit || '', qty, price];
-      if (owner) row.push(cost);
-      row.push(amt);
-      if (owner) row.push(profit, cost > 0 ? Math.round((price - cost) / cost * 100) + '%' : '');
-      row.push(it.note || '');
-      aoa.push(row);
-    });
+  // Gửi tới server để xuất file
+  fetch('/api/export-quote', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(exportData)
+  })
+  .then(response => response.json())
+  .then(data => {
+    btn.disabled = false;
+    btn.textContent = '📥 Xuất báo giá Excel';
 
-    var amtIdx = head.indexOf('Thành tiền');
-    var totalRow = new Array(head.length).fill('');
-    totalRow[amtIdx - 1] = 'TỔNG CỘNG';
-    totalRow[amtIdx] = total;
-    if (owner) {
-      var profitIdx = head.indexOf('Lợi nhuận');
-      totalRow[profitIdx] = totalProfit;
-      totalRow[profitIdx + 1] = totalCost > 0 ? Math.round(totalProfit / totalCost * 100) + '%' : '';
+    if (data.success) {
+      alert('✅ Xuất thành công!\n\n' + data.message);
+      // Download file
+      if (data.file) {
+        window.open('/api/download/' + encodeURIComponent(data.file), '_blank');
+      }
+    } else {
+      alert('❌ Lỗi: ' + (data.error || 'Không biết lỗi gì'));
     }
-    aoa.push([]);
-    aoa.push(totalRow);
-
-    var ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = head.map(function (h) { return { wch: (h === 'Tên sản phẩm') ? 32 : 14 }; });
-    var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'BaoGia');
-    var fname = 'BaoGia_' + (cust || qn).toString().replace(/[^0-9A-Za-zÀ-ỹ]+/g, '_').replace(/^_+|_+$/g, '') + '.xlsx';
-    XLSX.writeFile(wb, fname);
-  } catch (e) {
-    alert('❌ Lỗi xuất Excel: ' + (e && e.message || e));
-  }
-  if (btn) { btn.disabled = false; btn.textContent = oldText; }
+  })
+  .catch(error => {
+    btn.disabled = false;
+    btn.textContent = '📥 Xuất báo giá Excel';
+    alert('❌ Lỗi kết nối: ' + error.message + '\n\nCó thể server chưa chạy. Hãy mở Command Prompt rồi chạy:\npython3 server.py');
+  });
 }
 
 
@@ -3358,7 +3441,8 @@ function _docSo(n){
   var L=g.length,p=[]; for(var i=0;i<L;i++){ if(g[i]===0)continue; var u=DV[L-1-i]; p.push(d3(g[i],i>0)+(u?' '+u:'')); }
   var s=p.join(' ').replace(/\s+/g,' ').trim(); return s.charAt(0).toUpperCase()+s.slice(1)+' đồng';
 }
-function _bgContentHtml(){
+function _bgContentHtml(opts){
+  var _noTot=!!(opts&&opts.noTotals);
   var g=function(id){var e=document.getElementById(id);return e?e.value:'';};
   var qn=g('quoteNo')||('BG-'+Date.now()), qd=g('quoteDate');
   var cust=g('customerName'), addr=g('customerAddress'), phone=g('customerPhone');
@@ -3377,7 +3461,7 @@ function _bgContentHtml(){
     +'<tr><td colspan="'+pre+'" class="r b sum">TỔNG CỘNG THANH TOÁN</td><td class="r b sum">'+_fmtVN(grand)+'</td><td class="sum"></td></tr>';
   var head='<th class="c">STT</th><th>Tên hàng hóa dịch vụ</th>'+(hasDesc?'<th>Mô tả sản phẩm</th>':'')
     +'<th class="c">ĐVT</th><th class="c">Số lượng</th><th class="c">Đơn giá (VNĐ)</th><th class="c">Thành tiền (VNĐ)</th><th class="c">Ghi chú</th>';
-  var luu=[(vat>0?'Đơn giá trên là giá đã bao gồm Thuế GTGT.':'Đơn giá trên là giá chưa bao gồm Thuế GTGT.'),'Bên bán có trách nhiệm xuất hóa đơn GTGT cho bên mua.',
+  var luu=[(_noTot?'Đơn giá trên là giá chưa bao gồm Thuế GTGT.':(vat>0?'Đơn giá trên là giá đã bao gồm Thuế GTGT.':'Đơn giá trên là giá chưa bao gồm Thuế GTGT.')),'Bên bán có trách nhiệm xuất hóa đơn GTGT cho bên mua.',
     'Giao hàng: Theo thỏa thuận.','Thanh toán: Theo thỏa thuận.','Báo giá có hiệu lực trong vòng 15 ngày kể từ ngày báo giá.']
     .map(function(t,i){return '<div>'+(i+1)+'/ '+t+'</div>';}).join('');
   var nItems=items.length;
@@ -3404,19 +3488,19 @@ function _bgContentHtml(){
     +'<div>Địa chỉ: Khu 13, Hoàng Xá, Thanh Thủy, Phú Thọ</div><div>Điện thoại: 0982829806 &nbsp;|&nbsp; MST: 2601158676</div></div></div>'
     +'<h1>BẢNG BÁO GIÁ</h1><div class=\"sub\">'+escapeHtml(dstr)+'</div>'
     +'<div class=\"kg atom\"><div><b>Kính gửi:</b> '+escapeHtml(cust)+'</div><div><b>Địa chỉ:</b> '+escapeHtml(addr)+'</div><div><b>Điện thoại:</b> '+escapeHtml(phone)+'</div></div>'
-    +'<table><thead><tr>'+head+'</tr></thead><tbody>'+rows+tot+'</tbody></table>'
-    +'<div class=\"atom\" style=\"margin-top:6px;\"><b>Bằng chữ:</b> '+_docSo(grand)+'</div>'
+    +'<table><thead><tr>'+head+'</tr></thead><tbody>'+rows+(_noTot?'':tot)+'</tbody></table>'
+    +(_noTot?'':'<div class=\"atom\" style=\"margin-top:6px;\"><b>Bằng chữ:</b> '+_docSo(grand)+'</div>')
     +'<div class=\"luu atom\"><div class=\"t\">Lưu ý:</div>'+luu+'</div>'
     +'<div class=\"pay atom\">'+payR+'</div>'
     +'<div class=\"sign atom\"><div class=\"r1\">ĐẠI DIỆN HƯNG THỊNH SMART</div><div class=\"r2\">(Ký, ghi rõ họ tên, đóng dấu)</div><div class=\"stampwrap\"><img class=\"stamp\" src=\"'+HT_STAMP+'\"><img class=\"sig\" src=\"'+HT_SIG+'\"></div></div>';
   return {inner:inner, name:(cust||qn).replace(/[^0-9A-Za-zÀ-ỹ]+/g,'_').replace(/^_+|_+$/g,'')||'BaoGia'};
 }
-function printBaoGiaOffline(){
+function printBaoGiaOffline(opts){
   if(typeof quoteData==='undefined'||!quoteData.items||quoteData.items.length===0){ alert('❌ Chưa có sản phẩm trong báo giá'); return; }
   if(typeof html2pdf==='undefined'){ alert('Chưa tải được thư viện tạo PDF. Hãy tải lại trang.'); return; }
   try{ syncNewProductsToCatalog(); }catch(e){}
   try{ autoArchiveQuote(); }catch(e){}
-  var d=_bgContentHtml();
+  var d=_bgContentHtml((opts&&opts.noTotals)?{noTotals:true}:undefined);
   var _isMob=/Android|webOS|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'');
   var ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(255,255,255,.98);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-size:20px;color:#1e7e34;font-weight:bold;';
