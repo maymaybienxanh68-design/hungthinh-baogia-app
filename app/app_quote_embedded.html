@@ -3348,9 +3348,9 @@ function exportBaoGiaExcel(){
     pay('Chủ tài khoản: ','CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART');
     pay('Số tài khoản: ','8090688688');
     row++;
-    ws.mergeCells('E'+row+':'+last+row); var sc=ws.getCell('E'+row); sc.value='ĐẠI DIỆN HƯNG THỊNH SMART'; sc.font=Object.assign({},TNR,{bold:true,size:11}); sc.alignment={horizontal:'center'}; row++;
-    ws.mergeCells('E'+row+':'+last+row); var sc2=ws.getCell('E'+row); sc2.value='(Ký, ghi rõ họ tên, đóng dấu)'; sc2.font=Object.assign({},TNR,{italic:true,size:10}); sc2.alignment={horizontal:'center'}; row++;
-    try{ if(signStamp){ var ssId=wb.addImage({base64:signStamp,extension:'png'}); var _iw=150,_cwf=function(w){return w*7+5;},_rpx=0; for(var _k=4;_k<N;_k++){_rpx+=_cwf(cols[_k]);} var _off=Math.max(0,(_rpx-_iw)/2),_acc=0,_cx=4,_fr=0; while(_cx<N){var _cp=_cwf(cols[_cx]); if(_acc+_cp>=_off){_fr=(_off-_acc)/_cp; break;} _acc+=_cp; _cx++;} ws.addImage(ssId,{tl:{col:_cx+_fr,row:row-1+0.1},ext:{width:_iw,height:105}}); ws.getRow(row).height=80; ws.getRow(row+1).height=20; } }catch(e){}
+    ws.mergeCells('A'+row+':'+last+row); var sc=ws.getCell('A'+row); sc.value='ĐẠI DIỆN HƯNG THỊNH SMART'; sc.font=Object.assign({},TNR,{bold:true,size:11}); sc.alignment={horizontal:'center'}; row++;
+    ws.mergeCells('A'+row+':'+last+row); var sc2=ws.getCell('A'+row); sc2.value='(Ký, ghi rõ họ tên, đóng dấu)'; sc2.font=Object.assign({},TNR,{italic:true,size:10}); sc2.alignment={horizontal:'center'}; row++;
+    try{ if(signStamp){ var ssId=wb.addImage({base64:signStamp,extension:'png'}); var _iw=150,_cwf=function(w){return w*7+5;},_rpx=0; for(var _k=0;_k<N;_k++){_rpx+=_cwf(cols[_k]);} var _off=Math.max(0,(_rpx-_iw)/2),_acc=0,_cx=0,_fr=0; while(_cx<N){var _cp=_cwf(cols[_cx]); if(_acc+_cp>=_off){_fr=(_off-_acc)/_cp; break;} _acc+=_cp; _cx++;} ws.addImage(ssId,{tl:{col:_cx+_fr,row:row-1+0.1},ext:{width:_iw,height:105}}); ws.getRow(row).height=80; ws.getRow(row+1).height=20; } }catch(e){}
     return wb.xlsx.writeBuffer();
   }).then(function(buf){
     var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
