@@ -3322,7 +3322,7 @@ function exportBaoGiaExcel(){
     kg(7,'Kính gửi: ',cust); kg(8,'Địa chỉ: ',addr); kg(9,'Điện thoại: ',phone); ws.getRow(10).height=4;
     var hr=11, heads=hasDesc?['STT','Tên hàng hóa dịch vụ','Mô tả sản phẩm','ĐVT','Số lượng','Đơn giá (VNĐ)','Thành tiền (VNĐ)','Ghi chú']:['STT','Tên hàng hóa dịch vụ','ĐVT','Số lượng','Đơn giá (VNĐ)','Thành tiền (VNĐ)','Ghi chú'];
     heads.forEach(function(h,i){ var c=ws.getCell(hr,i+1); c.value=h; c.font=Object.assign({},TNR,{bold:true,size:11}); c.alignment={horizontal:'center',vertical:'middle',wrapText:true}; c.border=allb; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE8EEF5'}}; });
-    ws.getRow(hr).height=22;
+    ws.getRow(hr).height=32;
     var row=hr+1;
     items.forEach(function(it,idx){
       var amt=(it.qty||0)*(it.price||0);
@@ -3348,10 +3348,20 @@ function exportBaoGiaExcel(){
     pay('Chủ tài khoản: ','CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART');
     pay('Số tài khoản: ','8090688688');
     row++;
-    ws.mergeCells('A'+row+':'+last+row); var sc=ws.getCell('A'+row); sc.value='ĐẠI DIỆN HƯNG THỊNH SMART'; sc.font=Object.assign({},TNR,{bold:true,size:11}); sc.alignment={horizontal:'center'}; row++;
-    ws.mergeCells('A'+row+':'+last+row); var sc2=ws.getCell('A'+row); sc2.value='(Ký, ghi rõ họ tên, đóng dấu)'; sc2.font=Object.assign({},TNR,{italic:true,size:10}); sc2.alignment={horizontal:'center'}; row++;
-    try{ if(signStamp){ var ssId=wb.addImage({base64:signStamp,extension:'png'}); var _iw=150,_cwf=function(w){return w*7+5;},_rpx=0; for(var _k=0;_k<N;_k++){_rpx+=_cwf(cols[_k]);} var _off=Math.max(0,(_rpx-_iw)/2),_acc=0,_cx=0,_fr=0; while(_cx<N){var _cp=_cwf(cols[_cx]); if(_acc+_cp>=_off){_fr=(_off-_acc)/_cp; break;} _acc+=_cp; _cx++;} ws.addImage(ssId,{tl:{col:_cx+_fr,row:row-1+0.1},ext:{width:_iw,height:105}}); ws.getRow(row).height=80; ws.getRow(row+1).height=20; } }catch(e){}
-    return wb.xlsx.writeBuffer();
+    var _bw=0; for(var _k=4;_k<N;_k++){ _bw+=cols[_k]*7+5; }
+    var _bh=150;
+    var _finish=function(dataUrl){ try{ var _bId=wb.addImage({base64:dataUrl,extension:'png'}); ws.addImage(_bId,{tl:{col:4,row:row-1},ext:{width:_bw,height:_bh}}); ws.getRow(row).height=55; ws.getRow(row+1).height=55; ws.getRow(row+2).height=40; }catch(e){} };
+    return new Promise(function(_res){
+      try{
+        var _s2=2, _cv=document.createElement('canvas'); _cv.width=_bw*_s2; _cv.height=_bh*_s2; var _c2=_cv.getContext('2d'); _c2.scale(_s2,_s2);
+        _c2.textAlign='center'; _c2.fillStyle='#000';
+        var _fit=function(txt,bold,start){ var s=start; while(s>9){ _c2.font=(bold?'bold ':'italic ')+s+'px "Times New Roman", serif'; if(_c2.measureText(txt).width<=_bw-8) break; s--; } return s; };
+        var _sa=_fit('ĐẠI DIỆN HƯNG THỊNH SMART',true,17); _c2.font='bold '+_sa+'px "Times New Roman", serif'; _c2.fillText('ĐẠI DIỆN HƯNG THỊNH SMART', _bw/2, 16);
+        var _sb=_fit('(Ký, ghi rõ họ tên, đóng dấu)',false,14); _c2.font='italic '+_sb+'px "Times New Roman", serif'; _c2.fillText('(Ký, ghi rõ họ tên, đóng dấu)', _bw/2, 34);
+        if(signStamp){ var _si=new Image(); _si.onload=function(){ try{ var _sw=120,_sh=_sw*(_si.naturalHeight/_si.naturalWidth||0.7); _c2.drawImage(_si,(_bw-_sw)/2,42,_sw,_sh); }catch(e){} _finish(_cv.toDataURL('image/png')); _res(); }; _si.onerror=function(){ _finish(_cv.toDataURL('image/png')); _res(); }; _si.src=signStamp; }
+        else { _finish(_cv.toDataURL('image/png')); _res(); }
+      }catch(e){ _res(); }
+    }).then(function(){ return wb.xlsx.writeBuffer(); });
   }).then(function(buf){
     var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     var url=URL.createObjectURL(blob);
