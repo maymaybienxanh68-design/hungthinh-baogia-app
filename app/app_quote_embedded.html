@@ -62,6 +62,9 @@ input[type="number"] { width: 80px; }
 .qexp{font-family:inherit;font-size:12px;line-height:1.35;resize:none;overflow:hidden;padding:4px 6px;border:1px solid #ccc;border-radius:4px;transition:width .12s ease,height .12s ease;}
 .qexp:focus{position:relative;z-index:60;width:360px !important;height:110px !important;font-size:14px;background:#fffdf0;border-color:#1f5c8a;box-shadow:0 6px 18px rgba(0,0,0,.25);outline:none;}
 .qexp-sm:focus{width:240px !important;height:70px !important;}
+/* Ô nhập trong khung "Tự thêm sản phẩm mới": chữ dài tự xuống dòng, ô tự cao lên */
+.spwrap{width:100%;box-sizing:border-box;font-family:inherit;font-size:14px;line-height:1.4;padding:9px 10px;border:1px solid #ccc;border-radius:6px;resize:vertical;overflow:hidden;min-height:40px;}
+.spwrap:focus{border-color:#1f5c8a;background:#fffdf0;outline:none;}
 /* ==== Bảng kết quả tìm sản phẩm (rộng, dễ nhìn) ==== */
 #searchAddResults{margin-top:8px;border:1px solid #cbd8e6;border-radius:8px;background:#fff;max-height:420px;overflow:auto;box-shadow:0 4px 14px rgba(0,0,0,.12);}
 #searchAddResults table{width:100%;border-collapse:collapse;font-size:13px;}
@@ -204,15 +207,17 @@ header p{ font-size:12px; opacity:.9; }
           <div style="font-weight:bold;color:#1f5c8a;cursor:pointer;" onclick="var b=document.getElementById('spAddBody');b.style.display=(b.style.display==='none'?'block':'none');">➕ Tự thêm sản phẩm mới</div>
           <div id="spAddBody" style="display:none;margin-top:10px;">
             <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;">
-              <input type="text" id="sp_new_ten" placeholder="Tên sản phẩm *">
+              <textarea id="sp_new_ten" class="spwrap" rows="1" placeholder="Tên sản phẩm *" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" oninput="spAutoGrow(this)"></textarea>
               <input type="text" id="sp_new_ma" placeholder="Mã (bỏ trống = tự tạo)">
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1.3fr 1.3fr 2fr;gap:8px;margin-top:8px;">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:8px;">
               <input type="text" id="sp_new_dvt" placeholder="ĐVT">
               <input type="text" inputmode="numeric" id="sp_new_gianhap" placeholder="Giá nhập" oninput="this.value=fmtThousand(this.value)" style="text-align:right;font-weight:bold;">
               <input type="text" inputmode="numeric" id="sp_new_gia" placeholder="Giá bán" oninput="this.value=fmtThousand(this.value)" style="text-align:right;font-weight:bold;">
-              <input type="text" id="sp_new_mota" placeholder="Mô tả (tuỳ chọn)">
+              <input type="text" id="sp_new_ncc" list="nccListAll" placeholder="🏭 Nhà cung cấp (tuỳ chọn)">
             </div>
+            <textarea id="sp_new_mota" class="spwrap" rows="2" placeholder="Mô tả sản phẩm (tuỳ chọn) — gõ dài tự xuống dòng" oninput="spAutoGrow(this)" style="margin-top:8px;"></textarea>
+            <div style="font-size:12px;color:#666;margin-top:4px;">💡 Điền <b>Nhà cung cấp</b> + <b>Giá nhập</b> → tự lưu thành 1 dòng giá NCC để bảng "So sánh giá NCC" dùng được.</div>
             <button onclick="spAddOne()" style="margin-top:8px;background:#2e7d32;">➕ Thêm</button>
             <hr style="margin:12px 0;border:none;border-top:1px solid #dde;">
             <div style="font-size:13px;color:#555;margin-bottom:6px;">Nhập nhiều cùng lúc — file Excel/CSV (cột: <b>Tên | Mã | ĐVT | Giá nhập | Giá bán | Mô tả</b>). Offline dùng ô dán bên dưới.</div>
@@ -4261,13 +4266,27 @@ function spAddProduct(o){
   spExtra = spExtra.filter(function(x){return x.c!==ma;}); spExtra.push(prod); saveSpExtra();
   return true;
 }
+function spAutoGrow(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight+2, 160)+'px'; }
 function spAddOne(){
-  var ten=document.getElementById('sp_new_ten').value;
-  if(!ten.trim()){ alert('❌ Nhập Tên sản phẩm trước.'); return; }
+  var ten=(document.getElementById('sp_new_ten').value||'').replace(/\s+/g,' ').trim();
+  if(!ten){ alert('❌ Nhập Tên sản phẩm trước.'); return; }
   var _gn=document.getElementById('sp_new_gianhap');
-  spAddProduct({ n:ten, c:document.getElementById('sp_new_ma').value, u:document.getElementById('sp_new_dvt').value, v:(_gn?_gn.value:0), p:document.getElementById('sp_new_gia').value, desc:document.getElementById('sp_new_mota').value });
-  ['sp_new_ten','sp_new_ma','sp_new_dvt','sp_new_gianhap','sp_new_gia','sp_new_mota'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
-  var d=document.getElementById('spImpResult'); if(d) d.innerHTML='<div style="margin-top:8px;padding:8px;background:#f4fff4;border:1px solid #cfe9cf;border-radius:6px;">✅ Đã thêm/cập nhật sản phẩm. Gõ tên ở ô "Tìm sản phẩm" phía trên để đưa vào báo giá.</div>';
+  var _ncEl=document.getElementById('sp_new_ncc'), sup=_ncEl?(_ncEl.value||'').trim():'';
+  var giaNhap=parseInt(numOnly(_gn?_gn.value:0))||0;
+  spAddProduct({ n:ten, c:document.getElementById('sp_new_ma').value, u:document.getElementById('sp_new_dvt').value, v:giaNhap, p:document.getElementById('sp_new_gia').value, desc:document.getElementById('sp_new_mota').value });
+  var msg='✅ Đã thêm/cập nhật sản phẩm.';
+  /* Có nhà cung cấp + giá nhập -> lưu luôn 1 dòng giá NCC vào hệ thống */
+  var prod=appData.s.find(function(p){ return normalizeVN(p.n)===normalizeVN(ten); });
+  if(sup && giaNhap>0 && prod && typeof nccExtra!=='undefined'){
+    var today=(new Date()).toISOString().slice(0,10);
+    var same=nccExtra.find(function(r){ return r.c===prod.c && r.ncc===sup; });
+    if(same){ same.gia=giaNhap; same.ngay=today; same.ten_goi=ten; } else { nccExtra.push({ c:prod.c, ncc:sup, ten_goi:ten, sku:'', gia:giaNhap, hoadon:false, ngay:today }); }
+    if(typeof saveNccExtra==='function') saveNccExtra();
+    if(typeof refreshNccDatalist==='function') refreshNccDatalist();
+    msg+=' Đã lưu giá NCC <b>'+escapeHtml(sup)+'</b> = '+formatPrice(giaNhap)+'.';
+  }
+  ['sp_new_ten','sp_new_ma','sp_new_dvt','sp_new_gianhap','sp_new_gia','sp_new_mota','sp_new_ncc'].forEach(function(id){ var el=document.getElementById(id); if(el){ el.value=''; if(el.tagName==='TEXTAREA') el.style.height=''; } });
+  var d=document.getElementById('spImpResult'); if(d) d.innerHTML='<div style="margin-top:8px;padding:8px;background:#f4fff4;border:1px solid #cfe9cf;border-radius:6px;">'+msg+' Gõ tên ở ô "Gõ tên / mã sản phẩm" phía trên để đưa vào báo giá.</div>';
   spStoredInfo();
 }
 function spParseAoa(aoa){
