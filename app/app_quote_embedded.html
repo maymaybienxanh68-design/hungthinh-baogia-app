@@ -58,6 +58,58 @@ input[type="number"] { width: 80px; }
 .addr-slip .fld .vname { font-size: 28px; font-weight: bold; }
 .addr-slip .divider { border-top: 2px dashed #666; margin: 18px 0; }
 .kh-results div:hover { background: #f0f0f0; }
+
+/* ================= GÓI A — KHUNG SƯỜN CHUNG ================= */
+/* A2. Cỡ chữ chuẩn 3 mức + giãn dòng dễ đọc */
+body{ font-size:15px; line-height:1.55; }
+h2{ font-size:20px; line-height:1.35; margin-bottom:10px; }
+h3{ font-size:16.5px; line-height:1.4; margin:16px 0 8px; }
+label{ font-size:13.5px; color:#41576b; letter-spacing:.1px; }
+.card{ padding:20px 20px 18px; border-radius:12px; }
+p, li{ line-height:1.6; }
+input,select,textarea{ font-size:15px; }
+input:focus,select:focus,textarea:focus{ border-color:#1f5c8a; outline:none; box-shadow:0 0 0 3px rgba(31,92,138,.15); }
+
+/* A1. Thanh tab: icon + chữ, tab đang mở nổi rõ */
+.tabs{ gap:6px; border-bottom:2px solid #d9e6f2; padding-bottom:0; }
+.tab-btn{ display:inline-flex; align-items:center; gap:6px; padding:10px 14px; font-size:13.5px; font-weight:600;
+  color:#5b7183; background:#eef4fa; border:1px solid #dae6f1; border-bottom:none;
+  border-radius:9px 9px 0 0; margin:0; transition:background .12s,color .12s; }
+.tab-btn:hover{ background:#e2eefa; color:#1f5c8a; }
+.tab-btn.active{ background:#fff; color:#12456b; font-weight:800; border-color:#bcd6ec;
+  border-bottom:3px solid #1f5c8a; margin-bottom:-2px; box-shadow:0 -2px 8px rgba(0,0,0,.06); }
+
+/* A3. Nút phân màu theo việc */
+button{ border-radius:8px; transition:filter .12s, box-shadow .12s; }
+button:hover{ filter:brightness(1.08); }
+button:active{ filter:brightness(.94); }
+button:disabled{ opacity:.5; cursor:not-allowed; filter:none; }
+.htb-save{ background:#2e7d32 !important; color:#fff !important; }
+.htb-del{ background:#c0392b !important; color:#fff !important; }
+.htb-out{ background:#1f5c8a !important; color:#fff !important; }
+.htb-find{ background:#0277bd !important; color:#fff !important; }
+.htb-neutral{ background:#8a97a3 !important; color:#fff !important; }
+.htb-legend{ font-size:12px; color:#7b8b99; margin-top:6px; }
+
+/* A4. Thanh nút chính dính đáy màn hình (tab Báo giá) */
+.quote-actionbar{ position:sticky; bottom:0; z-index:70; display:flex; flex-wrap:wrap; gap:8px;
+  background:rgba(255,255,255,.97); border-top:2px solid #e3ecf4; padding:10px 4px 8px;
+  margin:16px -20px -18px; padding-left:20px; padding-right:20px; box-shadow:0 -4px 14px rgba(0,0,0,.08); }
+.quote-actionbar button{ margin-top:0; margin-right:0; }
+
+/* A5. Thông báo dạng toast góc phải (thay hộp alert chặn màn hình) */
+#htToastWrap{ position:fixed; right:16px; top:76px; z-index:9999; display:flex; flex-direction:column; gap:8px;
+  max-width:min(380px,88vw); pointer-events:none; }
+.ht-toast{ pointer-events:auto; background:#1f5c8a; color:#fff; padding:12px 14px; border-radius:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.28); font-size:14.5px; line-height:1.45; font-weight:600;
+  animation:htToastIn .18s ease-out; word-break:break-word; white-space:pre-wrap; cursor:pointer; }
+.ht-toast.ok{ background:#2e7d32; } .ht-toast.err{ background:#c0392b; } .ht-toast.warn{ background:#e67e22; }
+@keyframes htToastIn{ from{ opacity:0; transform:translateX(24px); } to{ opacity:1; transform:none; } }
+@media (max-width:640px){
+  #htToastWrap{ left:10px; right:10px; top:66px; max-width:none; }
+  .tab-btn{ padding:8px 10px; font-size:12.5px; }
+  .quote-actionbar{ margin-left:-14px; margin-right:-14px; padding-left:14px; padding-right:14px; }
+}
 /* ==== Báo giá: ô nhập tự nở thành bảng khi gõ (nhìn được hết nội dung) ==== */
 .qexp{font-family:inherit;font-size:12px;line-height:1.35;resize:none;overflow:hidden;padding:4px 6px;border:1px solid #ccc;border-radius:4px;transition:width .12s ease,height .12s ease;}
 .qexp:focus{position:relative;z-index:60;width:360px !important;height:110px !important;font-size:14px;background:#fffdf0;border-color:#1f5c8a;box-shadow:0 6px 18px rgba(0,0,0,.25);outline:none;}
@@ -245,11 +297,13 @@ header p{ font-size:12px; opacity:.9; }
           <tfoot id="quoteFoot"></tfoot>
         </table>
 
-        <button onclick="saveQuote()">💾 Lưu</button>
-        <button class="secondary" onclick="exportQuoteData()">📤 Dữ liệu</button>
-        <button style="background: #27ae60;" onclick="exportBaoGiaExcel()">📥 Excel</button>
-        <button style="background:#c0392b;font-weight:bold;" onclick="printBaoGiaOffline()">📄 PDF</button>
-        <button style="background:#e67e22;font-weight:bold;" onclick="printBaoGiaOffline({noTotals:true})">📄 PDF (không tổng)</button>
+        <div class="quote-actionbar">
+          <button onclick="saveQuote()">💾 Lưu</button>
+          <button class="secondary" onclick="exportQuoteData()">📤 Dữ liệu</button>
+          <button onclick="exportBaoGiaExcel()">📥 Excel</button>
+          <button onclick="printBaoGiaOffline()">📄 PDF</button>
+          <button style="background:#e67e22;" onclick="printBaoGiaOffline({noTotals:true})">📄 PDF (không tổng)</button>
+        </div>
       </div>
     </div>
 
@@ -1981,7 +2035,57 @@ let userData = { mode: null, loggedIn: false, selectedProductIdx: -1 };
 let quoteData = { no: "", date: "", customer: "", address: "", phone: "", items: [] };
 let savedQuotes = [];
 
+/* ===== GÓI A — A5: thông báo toast góc phải (không chặn màn hình) ===== */
+function htToast(msg, type, ms){
+  try{
+    var w=document.getElementById('htToastWrap');
+    if(!w){ w=document.createElement('div'); w.id='htToastWrap'; document.body.appendChild(w); }
+    var txt=String(msg==null?'':msg);
+    if(!type){
+      if(/^\s*(❌|🔒|⚠)/.test(txt) || /lỗi|không tìm thấy|chưa có|thất bại/i.test(txt)) type='err';
+      else if(/^\s*✅/.test(txt) || /đã lưu|thành công|đã thêm|hoàn tất/i.test(txt)) type='ok';
+      else type='';
+    }
+    var d=document.createElement('div');
+    d.className='ht-toast'+(type?' '+type:'');
+    d.textContent=txt;
+    d.onclick=function(){ if(d.parentNode) d.parentNode.removeChild(d); };
+    w.appendChild(d);
+    var life = ms || Math.min(9000, Math.max(3200, txt.length*70));
+    setTimeout(function(){ if(d.parentNode){ d.style.opacity='0'; d.style.transition='opacity .25s'; setTimeout(function(){ if(d.parentNode) d.parentNode.removeChild(d); },260); } }, life);
+  }catch(e){ /* nếu lỗi thì dùng hộp thông báo gốc */ try{ htNativeAlert(msg); }catch(_){} }
+}
+var htNativeAlert = window.alert.bind(window);
+window.alert = function(m){ htToast(m); };
+
+/* ===== GÓI A — A3: nút tự tô màu theo loại việc ===== */
+function htPaintButtons(root){
+  var list=(root||document).querySelectorAll('button:not([data-htc])');
+  for(var i=0;i<list.length;i++){
+    var b=list[i];
+    b.setAttribute('data-htc','1');
+    if(b.classList.contains('tab-btn')||b.classList.contains('tool-ic-btn')||b.classList.contains('badd')) continue;
+    var t=(b.textContent||'').trim();
+    if(!t) continue;
+    var cls='';
+    if(/xóa|xoá|bỏ |huỷ|hủy|gỡ|xoa /i.test(t)) cls='htb-del';
+    else if(/lưu|thêm|nạp|cập nhật|gộp|đăng nhập|chọn|áp dụng/i.test(t)) cls='htb-save';
+    else if(/pdf|excel|xuất|in |tải|dữ liệu|từ file|từ ô dán|csv/i.test(t)) cls='htb-out';
+    else if(/tìm|sửa|quét|so sánh|đối soát|xem/i.test(t)) cls='htb-find';
+    if(cls){ b.classList.remove('htb-save','htb-del','htb-out','htb-find'); b.classList.add(cls); }
+  }
+}
+function htWatchButtons(){
+  htPaintButtons();
+  try{
+    var tm=null;
+    new MutationObserver(function(){ clearTimeout(tm); tm=setTimeout(function(){ htPaintButtons(); },120); })
+      .observe(document.body,{childList:true,subtree:true});
+  }catch(e){}
+}
+
 window.onload = function() {
+  htWatchButtons();
   loadNccExtra();
   loadKhExtra();
   loadKhBGExtra();
