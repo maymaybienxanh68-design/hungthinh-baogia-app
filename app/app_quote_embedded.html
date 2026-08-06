@@ -3140,7 +3140,7 @@ function clearKhExtra() { if (!confirm('Xóa toàn bộ khách đã nạp thêm 
 // ----- Người gửi -----
 function getSenders() { try { return JSON.parse(localStorage.getItem('senders') || '[]'); } catch (e) { return []; } }
 function setSenders(a) { localStorage.setItem('senders', JSON.stringify(a)); }
-function initSenders() { let s = getSenders(); if (!s.length) { s = [{ ten: 'CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART', sdt: '0982829806', diachi: 'Khu 13, Hoàng Xá, Thanh Thủy, Phú Thọ' }]; setSenders(s); } }
+function initSenders() { let s = getSenders(); var HT_ADDR = 'Thôn 20 Hoàng Xá, xã Tu Vũ, Tỉnh Phú Thọ'; if (!s.length) { s = [{ ten: 'CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART', sdt: '0982829806', diachi: HT_ADDR }]; setSenders(s); } else { var ch = false; s.forEach(function(x){ if (x && typeof x.diachi === 'string' && /Khu\s*13/i.test(x.diachi)) { x.diachi = HT_ADDR; ch = true; } }); if (ch) setSenders(s); } }
 function renderSenderSelect() {
   let sel = document.getElementById('addr_senderSel'); if (!sel) return;
   let s = getSenders();
