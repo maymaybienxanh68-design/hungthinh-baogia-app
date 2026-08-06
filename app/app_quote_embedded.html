@@ -3459,19 +3459,29 @@ function _bgContentHtml(opts){
   var cust=g('customerName'), addr=g('customerAddress'), phone=g('customerPhone');
   var dstr=''; if(qd){var pp=qd.split('-'); if(pp.length===3)dstr='Ngày '+parseInt(pp[2],10)+' tháng '+parseInt(pp[1],10)+' năm '+pp[0];}
   var items=quoteData.items, hasDesc=items.some(function(it){return (it.description||'').trim();}), total=0;
+  var hasImg=items.some(function(it){return (it.img||'').trim();});
   var rows=items.map(function(it,i){var amt=(it.qty||0)*(it.price||0); total+=amt;
-    return '<tr><td class="c">'+(i+1)+'</td><td>'+escapeHtml(it.name||'')+'</td>'
-      +(hasDesc?'<td>'+escapeHtml(it.description||'')+'</td>':'')
+    return '<tr><td class="c">'+(i+1)+'</td><td class="nm">'+escapeHtml(it.name||'')+'</td>'
+      +(hasDesc?'<td class="ds">'+escapeHtml(it.description||'')+'</td>':'')
+      +(hasImg?'<td class="im">'+((it.img||'').trim()?'<img src="'+it.img+'">':'')+'</td>':'')
       +'<td class="c">'+escapeHtml(it.unit||'')+'</td><td class="c">'+(it.qty||0)+'</td>'
       +'<td class="r">'+_fmtVN(it.price||0)+'</td><td class="r">'+_fmtVN(amt)+'</td><td></td></tr>';}).join('');
-  var pre=hasDesc?6:5;
+  var pre=5+(hasDesc?1:0)+(hasImg?1:0);
   var vat=parseFloat(g('quoteVat')); if(!(vat>=0)) vat=8;
   var vatAmt=Math.round(total*vat/100), grand=total+vatAmt;
   var tot='<tr><td colspan="'+pre+'" class="r b sum">Cộng tiền hàng</td><td class="r b sum">'+_fmtVN(total)+'</td><td class="sum"></td></tr>'
     +'<tr><td colspan="'+pre+'" class="r b sum">Thuế GTGT (VAT '+vat+'%)</td><td class="r b sum">'+_fmtVN(vatAmt)+'</td><td class="sum"></td></tr>'
     +'<tr><td colspan="'+pre+'" class="r b sum">TỔNG CỘNG THANH TOÁN</td><td class="r b sum">'+_fmtVN(grand)+'</td><td class="sum"></td></tr>';
-  var head='<th class="c">STT</th><th>Tên hàng hóa dịch vụ</th>'+(hasDesc?'<th>Mô tả sản phẩm</th>':'')
+  var head='<th class="c">STT</th><th>Tên hàng hóa dịch vụ</th>'+(hasDesc?'<th class="c">Mô tả sản phẩm</th>':'')
+    +(hasImg?'<th class="c">Hình ảnh</th>':'')
     +'<th class="c">ĐVT</th><th class="c">Số lượng</th><th class="c">Đơn giá (VNĐ)</th><th class="c">Thành tiền (VNĐ)</th><th class="c">Ghi chú</th>';
+  /* Chia bề rộng cột cân đối theo các cột thực có -> nội dung không tràn/đè lên đường kẻ */
+  var cw = hasDesc&&hasImg ? [4,20,18,14,6,6,12,13,7]
+         : hasDesc ? [4,26,22,6,6,13,14,9]
+         : hasImg ? [4,30,16,6,6,13,15,10]
+         : [4,36,7,7,14,17,15];
+  var colg='<colgroup>'+cw.map(function(w){return '<col style="width:'+w+'%">';}).join('')+'</colgroup>';
+  var imgMaxH = items.length<=4 ? 96 : items.length<=8 ? 78 : items.length<=14 ? 62 : 50;
   var luu=[(_noTot?'Đơn giá trên là giá chưa bao gồm Thuế GTGT.':(vat>0?'Đơn giá trên là giá đã bao gồm Thuế GTGT.':'Đơn giá trên là giá chưa bao gồm Thuế GTGT.')),'Bên bán có trách nhiệm xuất hóa đơn GTGT cho bên mua.',
     'Giao hàng: Theo thỏa thuận.','Thanh toán: Theo thỏa thuận.','Báo giá có hiệu lực trong vòng 15 ngày kể từ ngày báo giá.']
     .map(function(t,i){return '<div>'+(i+1)+'/ '+t+'</div>';}).join('');
@@ -3485,6 +3495,10 @@ function _bgContentHtml(opts){
     +'#htbg h1{text-align:center;font-size:28px;font-weight:bold;letter-spacing:1px;margin:12px 0 2px;}#htbg .sub{text-align:center;font-style:italic;font-size:13px;margin-bottom:10px;}'
     +'#htbg .kg div{margin:2px 0;font-size:15px;}#htbg table{width:100%;border-collapse:collapse;margin-top:10px;}'
     +'#htbg th,#htbg td{border:1px solid #333;padding:'+rowPad+'px 6px;font-size:'+tblFont+'px;vertical-align:middle;}#htbg th{background:#fff;color:#000;text-align:center;font-weight:bold;font-size:'+(tblFont+1)+'px;padding:7px 6px;}'
+    +'#htbg td.nm{word-wrap:break-word;overflow-wrap:anywhere;line-height:1.3;}'
+    +'#htbg td.ds{word-wrap:break-word;overflow-wrap:anywhere;line-height:1.3;font-size:'+(tblFont-1)+'px;}'
+    +'#htbg td.im{text-align:center;padding:4px 3px;}'
+    +'#htbg td.im img{max-width:100%;max-height:'+imgMaxH+'px;width:auto;height:auto;object-fit:contain;display:block;margin:0 auto;}'
     +'#htbg .c{text-align:center;}#htbg .r{text-align:right;}#htbg .b{font-weight:bold;}#htbg td.sum{padding-top:4px;padding-bottom:4px;}'
     +'#htbg .luu{margin-top:10px;}#htbg .luu .t{font-weight:bold;text-decoration:underline;font-size:14px;}#htbg .luu div{font-size:13px;margin:2px 0;}'
     +'#htbg .pay{margin-top:12px;display:flex;justify-content:space-between;align-items:flex-start;}'
@@ -3499,7 +3513,7 @@ function _bgContentHtml(opts){
     +'<div>Địa chỉ: Thôn 20 Hoàng Xá, xã Tu Vũ, Tỉnh Phú Thọ</div><div>Điện thoại: 0982829806 &nbsp;|&nbsp; MST: 2601158676</div></div></div>'
     +'<h1>BẢNG BÁO GIÁ</h1><div class=\"sub\">'+escapeHtml(dstr)+'</div>'
     +'<div class=\"kg atom\"><div><b>Kính gửi:</b> '+escapeHtml(cust)+'</div><div><b>Địa chỉ:</b> '+escapeHtml(addr)+'</div><div><b>Điện thoại:</b> '+escapeHtml(phone)+'</div></div>'
-    +'<table><thead><tr>'+head+'</tr></thead><tbody>'+rows+(_noTot?'':tot)+'</tbody></table>'
+    +'<table>'+colg+'<thead><tr>'+head+'</tr></thead><tbody>'+rows+(_noTot?'':tot)+'</tbody></table>'
     +(_noTot?'':'<div class=\"atom\" style=\"margin-top:6px;\"><b>Bằng chữ:</b> '+_docSo(grand)+'</div>')
     +'<div class=\"luu atom\"><div class=\"t\">Lưu ý:</div>'+luu+'</div>'
     +'<div class=\"pay atom\">'+payR+'</div>'
