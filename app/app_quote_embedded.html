@@ -193,14 +193,15 @@ header p{ font-size:12px; opacity:.9; }
               <input type="text" id="sp_new_ten" placeholder="Tên sản phẩm *">
               <input type="text" id="sp_new_ma" placeholder="Mã (bỏ trống = tự tạo)">
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:8px;margin-top:8px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:8px;margin-top:8px;">
               <input type="text" id="sp_new_dvt" placeholder="ĐVT (Cái, Bộ...)">
-              <input type="number" id="sp_new_gia" placeholder="Đơn giá">
+              <input type="number" id="sp_new_gianhap" placeholder="Giá nhập">
+              <input type="number" id="sp_new_gia" placeholder="Giá bán">
               <input type="text" id="sp_new_mota" placeholder="Mô tả (tuỳ chọn)">
             </div>
             <button onclick="spAddOne()" style="margin-top:8px;background:#2e7d32;">➕ Thêm vào danh mục</button>
             <hr style="margin:12px 0;border:none;border-top:1px solid #dde;">
-            <div style="font-size:13px;color:#555;margin-bottom:6px;">Nhập nhiều cùng lúc — file Excel/CSV (cột: <b>Tên | Mã | ĐVT | Đơn giá | Mô tả</b>). Offline dùng ô dán bên dưới.</div>
+            <div style="font-size:13px;color:#555;margin-bottom:6px;">Nhập nhiều cùng lúc — file Excel/CSV (cột: <b>Tên | Mã | ĐVT | Giá nhập | Giá bán | Mô tả</b>). Offline dùng ô dán bên dưới.</div>
             <input type="file" id="spImpFile" accept=".xlsx,.xls,.csv"> <button onclick="importSpFile()">📄 Nhập từ file</button>
             <textarea id="spImpPaste" placeholder="Hoặc DÁN bảng từ Excel vào đây (mỗi dòng 1 sản phẩm, các cột cách nhau bằng Tab)" style="width:100%;height:70px;margin-top:8px;box-sizing:border-box;"></textarea>
             <button onclick="importSpPaste()" style="margin-top:6px;">📋 Nạp từ ô dán</button>
@@ -4167,33 +4168,35 @@ function spMakeCode(name){ var base = normalizeVN(name).toUpperCase().replace(/[
 function spAddProduct(o){
   var ten=(o.n||'').toString().trim(); if(!ten) return false;
   var ma=(o.c||'').toString().trim() || spMakeCode(ten);
-  var prod={ n:ten, c:ma, u:(o.u||'').toString().trim()||'Cái', p:(Number(o.p)||0), v:0, t:0, a:[], img:'', desc:(o.desc||'').toString().trim() };
+  var prod={ n:ten, c:ma, u:(o.u||'').toString().trim()||'Cái', p:(Number(o.p)||0), v:(Number(o.v)||0), t:0, a:[], img:'', desc:(o.desc||'').toString().trim() };
   var ex=appData.s.find(function(x){return x.c===ma;});
-  if(ex){ ex.n=prod.n; ex.u=prod.u; ex.p=prod.p; ex.desc=prod.desc; } else { appData.s.push(prod); }
+  if(ex){ ex.n=prod.n; ex.u=prod.u; ex.p=prod.p; if(prod.v) ex.v=prod.v; ex.desc=prod.desc; prod.v=ex.v||prod.v; } else { appData.s.push(prod); }
   spExtra = spExtra.filter(function(x){return x.c!==ma;}); spExtra.push(prod); saveSpExtra();
   return true;
 }
 function spAddOne(){
   var ten=document.getElementById('sp_new_ten').value;
   if(!ten.trim()){ alert('❌ Nhập Tên sản phẩm trước.'); return; }
-  spAddProduct({ n:ten, c:document.getElementById('sp_new_ma').value, u:document.getElementById('sp_new_dvt').value, p:document.getElementById('sp_new_gia').value, desc:document.getElementById('sp_new_mota').value });
-  ['sp_new_ten','sp_new_ma','sp_new_dvt','sp_new_gia','sp_new_mota'].forEach(function(id){ document.getElementById(id).value=''; });
+  var _gn=document.getElementById('sp_new_gianhap');
+  spAddProduct({ n:ten, c:document.getElementById('sp_new_ma').value, u:document.getElementById('sp_new_dvt').value, v:(_gn?_gn.value:0), p:document.getElementById('sp_new_gia').value, desc:document.getElementById('sp_new_mota').value });
+  ['sp_new_ten','sp_new_ma','sp_new_dvt','sp_new_gianhap','sp_new_gia','sp_new_mota'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   var d=document.getElementById('spImpResult'); if(d) d.innerHTML='<div style="margin-top:8px;padding:8px;background:#f4fff4;border:1px solid #cfe9cf;border-radius:6px;">✅ Đã thêm/cập nhật sản phẩm. Gõ tên ở ô "Tìm sản phẩm" phía trên để đưa vào báo giá.</div>';
   spStoredInfo();
 }
 function spParseAoa(aoa){
-  var hi=-1,cN=-1,cC=-1,cU=-1,cP=-1,cD=-1;
+  var hi=-1,cN=-1,cC=-1,cU=-1,cP=-1,cD=-1,cV=-1;
   for(var i=0;i<Math.min(aoa.length,15);i++){ var row=aoa[i]||[]; var joined=row.map(function(x){return normalizeVN(x);}).join(' ');
     if(/ten san pham|ten sp|ten hang|ten hoa|^ten| ten/.test(joined)){ hi=i; row.forEach(function(h,j){ var hn=normalizeVN(h);
       if(cN<0&&/ten san pham|ten sp|ten hang|ten hoa|^ten$|ten/.test(hn))cN=j;
       if(cC<0&&/^ma$|ma sp|ma hang|ma chuan|ma san pham|code/.test(hn))cC=j;
       if(cU<0&&/dvt|don vi|dv tinh|unit/.test(hn))cU=j;
-      if(cP<0&&/don gia|gia ban|^gia$|gia|price/.test(hn))cP=j;
+      if(cV<0&&/gia nhap|gia von|gia goc|gia mua|cost/.test(hn))cV=j;
+      if(cP<0&&!/gia nhap|gia von|gia goc|gia mua|cost/.test(hn)&&/don gia|gia ban|^gia$|gia|price/.test(hn))cP=j;
       if(cD<0&&/mo ta|dien giai|ghi chu|desc|note/.test(hn))cD=j; }); break; } }
   var out=[];
   if(hi>=0&&cN>=0){ for(var k=hi+1;k<aoa.length;k++){ var r=aoa[k]||[]; var n=r[cN]; if(typeof n!=='string'||!n.trim())continue;
-    out.push({n:n.trim(), c:(cC>=0&&r[cC]!=null)?String(r[cC]).trim():'', u:(cU>=0&&r[cU]!=null)?String(r[cU]).trim():'', p:(cP>=0&&r[cP]!=null)?r[cP]:0, desc:(cD>=0&&r[cD]!=null)?String(r[cD]).trim():''}); } }
-  else { aoa.forEach(function(r){ if(!Array.isArray(r)||!r[0])return; var n=String(r[0]).trim(); if(!n||/^(ten|ten san pham|stt|ma)$/.test(normalizeVN(n)))return; out.push({n:n, c:r[1]!=null?String(r[1]).trim():'', u:r[2]!=null?String(r[2]).trim():'', p:r[3]!=null?r[3]:0, desc:r[4]!=null?String(r[4]).trim():''}); }); }
+    out.push({n:n.trim(), c:(cC>=0&&r[cC]!=null)?String(r[cC]).trim():'', u:(cU>=0&&r[cU]!=null)?String(r[cU]).trim():'', v:(cV>=0&&r[cV]!=null)?r[cV]:0, p:(cP>=0&&r[cP]!=null)?r[cP]:0, desc:(cD>=0&&r[cD]!=null)?String(r[cD]).trim():''}); } }
+  else { aoa.forEach(function(r){ if(!Array.isArray(r)||!r[0])return; var n=String(r[0]).trim(); if(!n||/^(ten|ten san pham|stt|ma)$/.test(normalizeVN(n)))return; var h6=(r.length>=6&&String(r[5]==null?'':r[5]).trim()!==''); out.push({n:n, c:r[1]!=null?String(r[1]).trim():'', u:r[2]!=null?String(r[2]).trim():'', v:h6?(r[3]!=null?r[3]:0):0, p:h6?(r[4]!=null?r[4]:0):(r[3]!=null?r[3]:0), desc:h6?String(r[5]).trim():(r[4]!=null?String(r[4]).trim():'')}); }); }
   return out;
 }
 function spDoImport(rows){ var n=0; rows.forEach(function(r){ if(spAddProduct(r)) n++; });
@@ -4224,7 +4227,7 @@ function syncNewProductsToCatalog(){
     if(!it.name || !it.name.trim()) return;
     var nn=normalizeVN(it.name);
     var exists=appData.s.some(function(p){ return normalizeVN(p.n)===nn || (it.code && p.c && p.c===it.code); });
-    if(!exists){ if(spAddProduct({ n:it.name, c:it.code||'', u:it.unit||'', p:it.price||0, desc:it.description||'' })) n++; }
+    if(!exists){ if(spAddProduct({ n:it.name, c:it.code||'', u:it.unit||'', v:it.cost||0, p:it.price||0, desc:it.description||'' })) n++; }
   });
   if(n>0 && typeof spStoredInfo==='function') spStoredInfo();
   return n;
