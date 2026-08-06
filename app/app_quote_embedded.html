@@ -3312,7 +3312,7 @@ function exportBaoGiaExcel(){
     var thin={style:'thin',color:{argb:'FF333333'}}, allb={top:thin,left:thin,bottom:thin,right:thin};
     try{ if(typeof HT_LOGO!=='undefined'&&HT_LOGO){ var logoId=wb.addImage({base64:HT_LOGO,extension:'png'}); ws.addImage(logoId,{tl:{col:0.15,row:0.15},ext:{width:60,height:60}}); } }catch(e){}
     ws.mergeCells('A1:'+last+'1'); var c1=ws.getCell('A1'); c1.value='CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART'; c1.font=Object.assign({},TNR,{bold:true,size:12}); c1.alignment={horizontal:'center',vertical:'middle'};
-    ws.mergeCells('A2:'+last+'2'); var c2=ws.getCell('A2'); c2.value='Địa chỉ: Khu 13, Hoàng Xá, Thanh Thủy, Phú Thọ'; c2.font=Object.assign({},TNR,{size:10}); c2.alignment={horizontal:'center'};
+    ws.mergeCells('A2:'+last+'2'); var c2=ws.getCell('A2'); c2.value='Địa chỉ: Thôn 20 Hoàng Xá, xã Tu Vũ, Tỉnh Phú Thọ'; c2.font=Object.assign({},TNR,{size:10}); c2.alignment={horizontal:'center'};
     ws.mergeCells('A3:'+last+'3'); var c3=ws.getCell('A3'); c3.value='Điện thoại: 0982829806  |  MST: 2601158676'; c3.font=Object.assign({},TNR,{size:10}); c3.alignment={horizontal:'center'};
     ws.getRow(1).height=20; ws.getRow(2).height=15; ws.getRow(3).height=15; ws.getRow(4).height=6;
     for(var i=1;i<=N;i++){ ws.getCell(4,i).border={bottom:{style:'medium',color:{argb:'FF333333'}}}; }
@@ -3495,7 +3495,7 @@ function _bgContentHtml(opts){
     +'<div class=\"li\"><b>Số tài khoản:</b> 8090688688</div></div><img class=\"qr\" src=\"'+HT_QR+'\">';
   var inner='<style>'+css+'</style>'
     +'<div class=\"hd atom\"><img src=\"'+HT_LOGO+'\"><div class=\"co\"><b>CÔNG TY TNHH ĐẦU TƯ VÀ XUẤT NHẬP KHẨU HƯNG THỊNH SMART</b>'
-    +'<div>Địa chỉ: Khu 13, Hoàng Xá, Thanh Thủy, Phú Thọ</div><div>Điện thoại: 0982829806 &nbsp;|&nbsp; MST: 2601158676</div></div></div>'
+    +'<div>Địa chỉ: Thôn 20 Hoàng Xá, xã Tu Vũ, Tỉnh Phú Thọ</div><div>Điện thoại: 0982829806 &nbsp;|&nbsp; MST: 2601158676</div></div></div>'
     +'<h1>BẢNG BÁO GIÁ</h1><div class=\"sub\">'+escapeHtml(dstr)+'</div>'
     +'<div class=\"kg atom\"><div><b>Kính gửi:</b> '+escapeHtml(cust)+'</div><div><b>Địa chỉ:</b> '+escapeHtml(addr)+'</div><div><b>Điện thoại:</b> '+escapeHtml(phone)+'</div></div>'
     +'<table><thead><tr>'+head+'</tr></thead><tbody>'+rows+(_noTot?'':tot)+'</tbody></table>'
