@@ -217,6 +217,12 @@ header p{ font-size:12px; opacity:.9; }
               <input type="text" id="sp_new_ncc" list="nccListAll" placeholder="🏭 Nhà cung cấp (tuỳ chọn)">
             </div>
             <textarea id="sp_new_mota" class="spwrap" rows="2" placeholder="Mô tả sản phẩm (tuỳ chọn) — gõ dài tự xuống dòng" oninput="spAutoGrow(this)" style="margin-top:8px;"></textarea>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;">
+              <label style="font-size:13px;font-weight:bold;color:#1f5c8a;">🖼️ Ảnh sản phẩm:</label>
+              <input type="file" id="sp_new_img" accept="image/*" onchange="spPickImg(this)" style="font-size:13px;">
+              <img id="sp_new_img_prev" style="display:none;width:70px;height:70px;object-fit:contain;border:1px solid #cbd8e6;border-radius:6px;background:#fff;">
+              <button type="button" id="sp_new_img_del" onclick="spClearImg()" style="display:none;background:#c0392b;padding:5px 10px;font-size:12px;">✖ Bỏ ảnh</button>
+            </div>
             <div style="font-size:12px;color:#666;margin-top:4px;">💡 Điền <b>Nhà cung cấp</b> + <b>Giá nhập</b> → tự lưu thành 1 dòng giá NCC để bảng "So sánh giá NCC" dùng được.</div>
             <button onclick="spAddOne()" style="margin-top:8px;background:#2e7d32;">➕ Thêm</button>
             <hr style="margin:12px 0;border:none;border-top:1px solid #dde;">
@@ -4260,20 +4266,46 @@ function spAddProduct(o){
   var ten=(o.n||'').toString().trim(); if(!ten) return false;
   var ma=(o.c||'').toString().trim() || spMakeCode(ten);
   var _num=function(x){ var s=String(x==null?'':x).replace(/[^\d]/g,''); return s?parseInt(s,10):0; };
-  var prod={ n:ten, c:ma, u:(o.u||'').toString().trim()||'Cái', p:_num(o.p), v:_num(o.v), t:0, a:[], img:'', desc:(o.desc||'').toString().trim() };
+  var prod={ n:ten, c:ma, u:(o.u||'').toString().trim()||'Cái', p:_num(o.p), v:_num(o.v), t:0, a:[], img:(o.img||''), desc:(o.desc||'').toString().trim() };
   var ex=appData.s.find(function(x){return x.c===ma;});
-  if(ex){ ex.n=prod.n; ex.u=prod.u; ex.p=prod.p; if(prod.v) ex.v=prod.v; ex.desc=prod.desc; prod.v=ex.v||prod.v; } else { appData.s.push(prod); }
+  if(ex){ ex.n=prod.n; ex.u=prod.u; ex.p=prod.p; if(prod.v) ex.v=prod.v; ex.desc=prod.desc; if(prod.img) ex.img=prod.img; prod.v=ex.v||prod.v; prod.img=ex.img||prod.img; } else { appData.s.push(prod); }
   spExtra = spExtra.filter(function(x){return x.c!==ma;}); spExtra.push(prod); saveSpExtra();
   return true;
 }
 function spAutoGrow(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight+2, 160)+'px'; }
+/* ===== Ảnh cho sản phẩm tự thêm — tự thu nhỏ tối đa 700px cho nhẹ localStorage ===== */
+var spNewImgData='';
+function spShrinkImage(dataUrl, maxPx, cb){
+  var im=new Image();
+  im.onload=function(){
+    var w=im.naturalWidth, h=im.naturalHeight, r=Math.min(1, maxPx/Math.max(w,h));
+    if(r>=1){ cb(dataUrl); return; }
+    var cv=document.createElement('canvas'); cv.width=Math.round(w*r); cv.height=Math.round(h*r);
+    var cx=cv.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,cv.width,cv.height); cx.drawImage(im,0,0,cv.width,cv.height);
+    try{ cb(cv.toDataURL('image/jpeg',0.85)); }catch(e){ cb(dataUrl); }
+  };
+  im.onerror=function(){ cb(dataUrl); };
+  im.src=dataUrl;
+}
+function spPickImg(inputEl){
+  var f=inputEl.files && inputEl.files[0]; if(!f) return;
+  var rd=new FileReader();
+  rd.onload=function(e){ spShrinkImage(e.target.result, 700, function(d){ spNewImgData=d; spShowImgPrev(); }); };
+  rd.readAsDataURL(f);
+}
+function spShowImgPrev(){
+  var p=document.getElementById('sp_new_img_prev'), b=document.getElementById('sp_new_img_del');
+  if(spNewImgData){ if(p){ p.src=spNewImgData; p.style.display='block'; } if(b) b.style.display='inline-block'; }
+  else { if(p){ p.removeAttribute('src'); p.style.display='none'; } if(b) b.style.display='none'; }
+}
+function spClearImg(){ spNewImgData=''; var i=document.getElementById('sp_new_img'); if(i) i.value=''; spShowImgPrev(); }
 function spAddOne(){
   var ten=(document.getElementById('sp_new_ten').value||'').replace(/\s+/g,' ').trim();
   if(!ten){ alert('❌ Nhập Tên sản phẩm trước.'); return; }
   var _gn=document.getElementById('sp_new_gianhap');
   var _ncEl=document.getElementById('sp_new_ncc'), sup=_ncEl?(_ncEl.value||'').trim():'';
   var giaNhap=parseInt(numOnly(_gn?_gn.value:0))||0;
-  spAddProduct({ n:ten, c:document.getElementById('sp_new_ma').value, u:document.getElementById('sp_new_dvt').value, v:giaNhap, p:document.getElementById('sp_new_gia').value, desc:document.getElementById('sp_new_mota').value });
+  spAddProduct({ n:ten, c:document.getElementById('sp_new_ma').value, u:document.getElementById('sp_new_dvt').value, v:giaNhap, p:document.getElementById('sp_new_gia').value, desc:document.getElementById('sp_new_mota').value, img:spNewImgData });
   var msg='✅ Đã thêm/cập nhật sản phẩm.';
   /* Có nhà cung cấp + giá nhập -> lưu luôn 1 dòng giá NCC vào hệ thống */
   var prod=appData.s.find(function(p){ return normalizeVN(p.n)===normalizeVN(ten); });
@@ -4285,7 +4317,9 @@ function spAddOne(){
     if(typeof refreshNccDatalist==='function') refreshNccDatalist();
     msg+=' Đã lưu giá NCC <b>'+escapeHtml(sup)+'</b> = '+formatPrice(giaNhap)+'.';
   }
+  if(spNewImgData) msg+=' Đã lưu ảnh sản phẩm.';
   ['sp_new_ten','sp_new_ma','sp_new_dvt','sp_new_gianhap','sp_new_gia','sp_new_mota','sp_new_ncc'].forEach(function(id){ var el=document.getElementById(id); if(el){ el.value=''; if(el.tagName==='TEXTAREA') el.style.height=''; } });
+  spClearImg();
   var d=document.getElementById('spImpResult'); if(d) d.innerHTML='<div style="margin-top:8px;padding:8px;background:#f4fff4;border:1px solid #cfe9cf;border-radius:6px;">'+msg+' Gõ tên ở ô "Gõ tên / mã sản phẩm" phía trên để đưa vào báo giá.</div>';
   spStoredInfo();
 }
