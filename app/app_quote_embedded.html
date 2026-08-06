@@ -91,6 +91,25 @@ button:disabled{ opacity:.5; cursor:not-allowed; filter:none; }
 .htb-neutral{ background:#8a97a3 !important; color:#fff !important; }
 .htb-legend{ font-size:12px; color:#7b8b99; margin-top:6px; }
 
+/* A6. Khung cuộn cho bảng rộng — bảng KHÔNG tràn ra ngoài thẻ trắng nữa */
+.container{ max-width:1280px; }
+.tbl-scroll{ width:100%; overflow-x:auto; overflow-y:visible; border:1px solid #e3ecf4; border-radius:10px; background:#fff; }
+.tbl-scroll table{ margin:0; min-width:max-content; }
+.tbl-scroll::-webkit-scrollbar{ height:10px; }
+.tbl-scroll::-webkit-scrollbar-thumb{ background:#c3d4e3; border-radius:6px; }
+
+/* Bảng báo giá: gọn, dễ đọc, số không bị gãy dòng */
+.quote-table th{ background:#eef4fa; color:#28475f; font-size:12.5px; font-weight:700; white-space:nowrap;
+  padding:9px 8px; border-bottom:2px solid #d9e6f2; position:sticky; top:0; z-index:3; }
+.quote-table td{ padding:7px 8px; vertical-align:middle; border-bottom:1px solid #edf1f5; }
+.quote-table tbody tr:nth-child(even) td{ background:#fafcfe; }
+.quote-table tbody tr:hover td{ background:#eaf4ff; }
+.quote-table td.text-right,.quote-table th.text-right{ white-space:nowrap; }
+.quote-table .total-row td{ background:#eef4fa !important; font-size:14px; white-space:nowrap; }
+.quote-table button{ padding:6px 10px; font-size:12px; margin:0; }
+.quote-table input[type="file"]{ width:104px; font-size:11px; padding:2px; border:none; }
+.quote-table input,.quote-table textarea{ padding:5px 6px; }
+
 /* A4. Thanh nút chính dính đáy màn hình (tab Báo giá) */
 .quote-actionbar{ position:sticky; bottom:0; z-index:70; display:flex; flex-wrap:wrap; gap:8px;
   background:rgba(255,255,255,.97); border-top:2px solid #e3ecf4; padding:10px 4px 8px;
@@ -290,12 +309,14 @@ header p{ font-size:12px; opacity:.9; }
 
         <h3 style="margin-top: 20px;">Danh sách hàng</h3>
         <button onclick="addBlankQuoteItem()" style="background:#0277bd;margin-bottom:8px;">➕ Dòng trống</button>
-        <table class="quote-table" id="quoteTable">
-          <thead id="quoteHead"></thead>
-          <tbody id="quoteBody">
-          </tbody>
-          <tfoot id="quoteFoot"></tfoot>
-        </table>
+        <div class="tbl-scroll">
+          <table class="quote-table" id="quoteTable">
+            <thead id="quoteHead"></thead>
+            <tbody id="quoteBody">
+            </tbody>
+            <tfoot id="quoteFoot"></tfoot>
+          </table>
+        </div>
 
         <div class="quote-actionbar">
           <button onclick="saveQuote()">💾 Lưu</button>
@@ -2365,8 +2386,10 @@ function updateQuoteTable() {
   tbody.innerHTML = quoteData.items.map((item, itemIdx) => {
     var cost = item.cost || 0, price = item.price || 0, qty = item.qty || 0;
     var profit = (price - cost) * qty;
-    var pctTxt = cost > 0 ? (Math.round((price - cost) / cost * 100) + '%') : (price > 0 ? '—' : '0%');
-    var profColor = profit < 0 ? '#c0392b' : '#2e7d32';
+    var noSale = !(price > 0);   /* chưa nhập giá bán thì chưa tính lỗ */
+    var pctTxt = noSale ? '—' : (cost > 0 ? (Math.round((price - cost) / cost * 100) + '%') : '—');
+    var profColor = noSale ? '#9aa7b2' : (profit < 0 ? '#c0392b' : '#2e7d32');
+    var profTxt = noSale ? '—' : formatPrice(profit);
     return '<tr>'
       + '<td>' + (itemIdx + 1) + '</td>'
       + '<td><textarea rows="2" class="qexp" style="width:150px;" placeholder="Tên sản phẩm" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}" onchange="updateItem(' + itemIdx + ', \'name\', this.value.replace(/\\s+/g,\' \').trim())">' + escapeHtml(item.name) + '</textarea></td>'
@@ -2378,7 +2401,7 @@ function updateQuoteTable() {
       + (owner ? ('<td><input type="text" inputmode="numeric" id="qi_cost_' + itemIdx + '" value="' + fmtThousand(cost) + '" oninput="onPriceInput(' + itemIdx + ', \'cost\', this)" onchange="updateItem(' + itemIdx + ', \'cost\', this.value)" placeholder="Giá gốc" style="width:135px;font-size:16px;font-weight:bold;text-align:right;padding:7px 8px;background:#fff7e6;"></td>') : '')
       + '<td><input type="text" inputmode="numeric" id="qi_price_' + itemIdx + '" value="' + fmtThousand(price) + '" oninput="onPriceInput(' + itemIdx + ', \'price\', this)" onchange="updateItem(' + itemIdx + ', \'price\', this.value)" placeholder="Giá bán" style="width:135px;font-size:16px;font-weight:bold;text-align:right;padding:7px 8px;"></td>'
       + '<td class="text-right" id="qi_amt_' + itemIdx + '">' + formatPrice(qty * price) + '</td>'
-      + (owner ? ('<td class="text-right" id="qi_prof_' + itemIdx + '" style="color:' + profColor + ';font-weight:bold;">' + formatPrice(profit) + '</td>') : '')
+      + (owner ? ('<td class="text-right" id="qi_prof_' + itemIdx + '" style="color:' + profColor + ';font-weight:bold;">' + profTxt + '</td>') : '')
       + (owner ? ('<td class="text-right" id="qi_pct_' + itemIdx + '" style="color:' + profColor + ';font-weight:bold;">' + pctTxt + '</td>') : '')
       + '<td><textarea rows="2" class="qexp" style="width:90px;" placeholder="Ghi chú" onchange="updateItem(' + itemIdx + ', \'note\', this.value)">' + escapeHtml(item.note || '') + '</textarea></td>'
       + '<td><button onclick="removeItem(' + itemIdx + ')" style="background: #c0392b;">Xóa</button></td>'
@@ -2388,13 +2411,16 @@ function updateQuoteTable() {
   let total = quoteData.items.reduce((sum, item) => sum + ((item.qty||0) * (item.price||0)), 0);
   let totalProfit = quoteData.items.reduce((sum, item) => sum + (((item.price||0) - (item.cost||0)) * (item.qty||0)), 0);
   let totalCost = quoteData.items.reduce((sum, item) => sum + ((item.cost||0) * (item.qty||0)), 0);
-  let totalPct = totalCost > 0 ? (Math.round(totalProfit / totalCost * 100) + '%') : '—';
+  let anySale = quoteData.items.some(function(x){ return (x.price||0) > 0; });
+  let totalPct = (anySale && totalCost > 0) ? (Math.round(totalProfit / totalCost * 100) + '%') : '—';
+  if (!anySale) { totalProfit = null; }
   var foot = document.getElementById('quoteFoot');
   if (foot) {
-    var pc = totalProfit < 0 ? '#c0392b' : '#2e7d32';
+    var pc = (totalProfit === null) ? '#9aa7b2' : (totalProfit < 0 ? '#c0392b' : '#2e7d32');
+    var totProfTxt = (totalProfit === null) ? '—' : formatPrice(totalProfit);
     foot.innerHTML = '<tr class="total-row"><td colspan="' + (owner ? 9 : 8) + '">TỔNG CỘNG</td>'
       + '<td class="text-right" id="totalAmount">' + formatPrice(total) + '</td>'
-      + (owner ? ('<td class="text-right" style="color:' + pc + ';">' + formatPrice(totalProfit) + '</td><td class="text-right" style="color:' + pc + ';">' + totalPct + '</td>') : '')
+      + (owner ? ('<td class="text-right" style="color:' + pc + ';">' + totProfTxt + '</td><td class="text-right" style="color:' + pc + ';">' + totalPct + '</td>') : '')
       + '<td colspan="2"></td></tr>';
   } else {
     var ta = document.getElementById('totalAmount'); if (ta) ta.textContent = formatPrice(total);
@@ -2423,19 +2449,20 @@ function quoteRecalcRow(idx){
   var owner = (typeof userData!=='undefined' && userData.mode==='owner');
   var it = quoteData.items[idx]; if(!it) return;
   var qty=it.qty||0, price=it.price||0, cost=it.cost||0;
-  var profit=(price-cost)*qty, pc = profit<0 ? '#c0392b' : '#2e7d32';
+  var noSale=!(price>0);
+  var profit=(price-cost)*qty, pc = noSale ? '#9aa7b2' : (profit<0 ? '#c0392b' : '#2e7d32');
   var e;
   if((e=document.getElementById('qi_amt_'+idx))) e.textContent = formatPrice(qty*price);
-  if((e=document.getElementById('qi_prof_'+idx))){ e.textContent = formatPrice(profit); e.style.color=pc; }
-  if((e=document.getElementById('qi_pct_'+idx))){ e.textContent = cost>0 ? (Math.round((price-cost)/cost*100)+'%') : (price>0?'—':'0%'); e.style.color=pc; }
-  var total=0, tProfit=0, tCost=0;
-  quoteData.items.forEach(function(x){ var q=x.qty||0,p=x.price||0,c=x.cost||0; total+=q*p; tProfit+=(p-c)*q; tCost+=c*q; });
+  if((e=document.getElementById('qi_prof_'+idx))){ e.textContent = noSale ? '—' : formatPrice(profit); e.style.color=pc; }
+  if((e=document.getElementById('qi_pct_'+idx))){ e.textContent = noSale ? '—' : (cost>0 ? (Math.round((price-cost)/cost*100)+'%') : '—'); e.style.color=pc; }
+  var total=0, tProfit=0, tCost=0, anySale=false;
+  quoteData.items.forEach(function(x){ var q=x.qty||0,p=x.price||0,c=x.cost||0; if(p>0) anySale=true; total+=q*p; tProfit+=(p-c)*q; tCost+=c*q; });
   var foot=document.getElementById('quoteFoot');
   if(foot){
-    var fp = tProfit<0 ? '#c0392b' : '#2e7d32';
+    var fp = !anySale ? '#9aa7b2' : (tProfit<0 ? '#c0392b' : '#2e7d32');
     foot.innerHTML = '<tr class="total-row"><td colspan="' + (owner ? 9 : 8) + '">TỔNG CỘNG</td>'
       + '<td class="text-right" id="totalAmount">' + formatPrice(total) + '</td>'
-      + (owner ? ('<td class="text-right" style="color:' + fp + ';">' + formatPrice(tProfit) + '</td><td class="text-right" style="color:' + fp + ';">' + (tCost>0?(Math.round(tProfit/tCost*100)+'%'):'—') + '</td>') : '')
+      + (owner ? ('<td class="text-right" style="color:' + fp + ';">' + (anySale?formatPrice(tProfit):'—') + '</td><td class="text-right" style="color:' + fp + ';">' + ((anySale&&tCost>0)?(Math.round(tProfit/tCost*100)+'%'):'—') + '</td>') : '')
       + '<td colspan="2"></td></tr>';
   } else { var ta=document.getElementById('totalAmount'); if(ta) ta.textContent=formatPrice(total); }
   if (typeof dsRenderQuotePreview === 'function') dsRenderQuotePreview();
