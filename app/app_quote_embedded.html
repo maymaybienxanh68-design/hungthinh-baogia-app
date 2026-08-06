@@ -58,6 +58,20 @@ input[type="number"] { width: 80px; }
 .addr-slip .fld .vname { font-size: 28px; font-weight: bold; }
 .addr-slip .divider { border-top: 2px dashed #666; margin: 18px 0; }
 .kh-results div:hover { background: #f0f0f0; }
+/* ==== Báo giá: ô nhập tự nở thành bảng khi gõ (nhìn được hết nội dung) ==== */
+.qexp{font-family:inherit;font-size:12px;line-height:1.35;resize:none;overflow:hidden;padding:4px 6px;border:1px solid #ccc;border-radius:4px;transition:width .12s ease,height .12s ease;}
+.qexp:focus{position:relative;z-index:60;width:360px !important;height:110px !important;font-size:14px;background:#fffdf0;border-color:#1f5c8a;box-shadow:0 6px 18px rgba(0,0,0,.25);outline:none;}
+.qexp-sm:focus{width:240px !important;height:70px !important;}
+/* ==== Bảng kết quả tìm sản phẩm (rộng, dễ nhìn) ==== */
+#searchAddResults{margin-top:8px;border:1px solid #cbd8e6;border-radius:8px;background:#fff;max-height:420px;overflow:auto;box-shadow:0 4px 14px rgba(0,0,0,.12);}
+#searchAddResults table{width:100%;border-collapse:collapse;font-size:13px;}
+#searchAddResults th{position:sticky;top:0;background:#1f5c8a;color:#fff;padding:7px 8px;text-align:left;font-size:12px;z-index:2;}
+#searchAddResults td{padding:7px 8px;border-top:1px solid #eee;vertical-align:middle;}
+#searchAddResults tr.pick:hover td{background:#eaf4ff;cursor:pointer;}
+#searchAddResults .nm{font-weight:bold;color:#14405e;}
+#searchAddResults .code{font-size:11px;color:#777;}
+#searchAddResults .badd{background:#2e7d32;color:#fff;border:none;border-radius:5px;padding:5px 10px;font-size:12px;cursor:pointer;white-space:nowrap;}
+#searchAddHint{font-size:12px;color:#777;padding:8px;}
 
 /* ===== ICON GRID CHO TAB CÔNG CỤ — 2026-07-25 ===== */
 .tool-ic-grid{ display:flex; flex-wrap:wrap; gap:10px; margin:4px 0 6px; }
@@ -181,11 +195,11 @@ header p{ font-size:12px; opacity:.9; }
           <label>Thuế GTGT (%):</label>
           <input type="number" id="quoteVat" value="8" min="0" step="0.5">
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 100px 1fr; gap: 10px;">
-          <input type="text" id="searchAdd" placeholder="Tìm sản phẩm..." onkeyup="searchAddProduct()">
+        <div style="display:grid;grid-template-columns:1fr 90px;gap:8px;">
+          <input type="text" id="searchAdd" placeholder="Gõ tên / mã sản phẩm..." onkeyup="searchAddProduct()" style="font-size:15px;padding:9px 10px;">
           <button onclick="addToQuote()">Thêm</button>
-          <div id="searchAddResults" style="position: absolute; background: white; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; width: 300px; z-index: 10; display: none;"></div>
         </div>
+        <div id="searchAddResults" style="display:none;"></div>
         <div style="margin-top:12px;border:1px dashed #9db8d6;border-radius:8px;padding:10px;background:#f7fbff;">
           <div style="font-weight:bold;color:#1f5c8a;cursor:pointer;" onclick="var b=document.getElementById('spAddBody');b.style.display=(b.style.display==='none'?'block':'none');">➕ Tự thêm sản phẩm mới</div>
           <div id="spAddBody" style="display:none;margin-top:10px;">
@@ -199,20 +213,20 @@ header p{ font-size:12px; opacity:.9; }
               <input type="number" id="sp_new_gia" placeholder="Giá bán">
               <input type="text" id="sp_new_mota" placeholder="Mô tả (tuỳ chọn)">
             </div>
-            <button onclick="spAddOne()" style="margin-top:8px;background:#2e7d32;">➕ Thêm vào danh mục</button>
+            <button onclick="spAddOne()" style="margin-top:8px;background:#2e7d32;">➕ Thêm</button>
             <hr style="margin:12px 0;border:none;border-top:1px solid #dde;">
             <div style="font-size:13px;color:#555;margin-bottom:6px;">Nhập nhiều cùng lúc — file Excel/CSV (cột: <b>Tên | Mã | ĐVT | Giá nhập | Giá bán | Mô tả</b>). Offline dùng ô dán bên dưới.</div>
-            <input type="file" id="spImpFile" accept=".xlsx,.xls,.csv"> <button onclick="importSpFile()">📄 Nhập từ file</button>
+            <input type="file" id="spImpFile" accept=".xlsx,.xls,.csv"> <button onclick="importSpFile()">📄 Từ file</button>
             <textarea id="spImpPaste" placeholder="Hoặc DÁN bảng từ Excel vào đây (mỗi dòng 1 sản phẩm, các cột cách nhau bằng Tab)" style="width:100%;height:70px;margin-top:8px;box-sizing:border-box;"></textarea>
-            <button onclick="importSpPaste()" style="margin-top:6px;">📋 Nạp từ ô dán</button>
+            <button onclick="importSpPaste()" style="margin-top:6px;">📋 Từ ô dán</button>
             <div id="spImpResult"></div>
             <div id="spStoredInfo" style="font-size:12px;color:#666;margin-top:6px;"></div>
           </div>
         </div>
-        <button class="secondary" onclick="clearQuote()">Xóa báo giá</button>
+        <button class="secondary" onclick="clearQuote()">🗑️ Xóa</button>
 
         <h3 style="margin-top: 20px;">Danh sách hàng</h3>
-        <button onclick="addBlankQuoteItem()" style="background:#0277bd;margin-bottom:8px;">➕ Thêm dòng trống</button>
+        <button onclick="addBlankQuoteItem()" style="background:#0277bd;margin-bottom:8px;">➕ Dòng trống</button>
         <table class="quote-table" id="quoteTable">
           <thead id="quoteHead"></thead>
           <tbody id="quoteBody">
@@ -220,11 +234,11 @@ header p{ font-size:12px; opacity:.9; }
           <tfoot id="quoteFoot"></tfoot>
         </table>
 
-        <button onclick="saveQuote()">💾 Lưu báo giá</button>
-        <button class="secondary" onclick="exportQuoteData()">📤 Xuất dữ liệu (PDF/Excel)</button>
-        <button style="background: #27ae60;" onclick="exportBaoGiaExcel()">📥 Xuất báo giá Excel</button>
-        <button style="background:#c0392b;font-weight:bold;" onclick="printBaoGiaOffline()">📄 Xuất báo giá PDF</button>
-        <button style="background:#e67e22;font-weight:bold;" onclick="printBaoGiaOffline({noTotals:true})">📄 Xuất PDF (không tổng)</button>
+        <button onclick="saveQuote()">💾 Lưu</button>
+        <button class="secondary" onclick="exportQuoteData()">📤 Dữ liệu</button>
+        <button style="background: #27ae60;" onclick="exportBaoGiaExcel()">📥 Excel</button>
+        <button style="background:#c0392b;font-weight:bold;" onclick="printBaoGiaOffline()">📄 PDF</button>
+        <button style="background:#e67e22;font-weight:bold;" onclick="printBaoGiaOffline({noTotals:true})">📄 PDF (không tổng)</button>
       </div>
     </div>
 
@@ -2160,27 +2174,34 @@ function searchAddProduct() {
     return (p.n && normalizeVN(p.n).includes(keyword)) ||
            (p.c && normalizeVN(p.c).includes(keyword)) ||
            (p.a && p.a.some(a => normalizeVN(a).includes(keyword)));
-  }).slice(0, 10);
+  });
 
   let resultsDiv = document.getElementById('searchAddResults');
-  if (!keyword) {
-    resultsDiv.style.display = 'none';
+  if (!keyword) { resultsDiv.style.display = 'none'; resultsDiv.innerHTML=''; return; }
+
+  var owner = (userData.mode === 'owner');
+  var shown = results.slice(0, 50);
+  if (shown.length === 0) {
+    resultsDiv.innerHTML = '<div id="searchAddHint">Không tìm thấy sản phẩm nào khớp. Dùng "➕ Tự thêm sản phẩm mới" bên dưới.</div>';
+    resultsDiv.style.display = 'block';
     return;
   }
-
-  resultsDiv.innerHTML = results.map((p, idx) => `
-    <div style="padding: 12px; border-bottom: 1px solid #ddd; cursor: pointer; background: #fafafa; hover: background #f0f0f0;" onclick="selectProduct(${appData.s.indexOf(p)})">
-      <div style="font-weight: bold; color: #1f5c8a; font-size: 14px; margin-bottom: 8px;">📦 ${p.n}</div>
-      <div style="font-size: 12px; color: #555; line-height: 1.6;">
-        <div>🏷️ Mã chuẩn: <strong>${p.c}</strong></div>
-        <div>📏 Đơn vị: <strong>${p.u}</strong></div>
-        <div style="color: #2e7d32;">💰 Giá bán: <strong>${formatPrice(p.p)}</strong></div>
-        ${userData.mode === 'owner' ? '<div style="color: #c0392b;">💵 Giá vốn: <strong>' + formatPrice(p.v) + '</strong></div>' : ''}
-        <div>📊 Tồn kho: <strong>${p.t}</strong></div>
-        ${p.a && p.a.length > 0 ? '<div style="color: #999;">🔗 Alias: ' + p.a.join(', ') + '</div>' : ''}
-      </div>
-    </div>
-  `).join('');
+  var rows = shown.map(function(p){
+    var gi = appData.s.indexOf(p);
+    return '<tr class="pick" onclick="selectProduct(' + gi + ')">'
+      + '<td><div class="nm">' + escapeHtml(p.n) + '</div><div class="code">🏷️ ' + escapeHtml(p.c||'')
+        + (p.a && p.a.length ? ' &nbsp;·&nbsp; 🔗 ' + escapeHtml(p.a.slice(0,3).join(', ')) : '') + '</div></td>'
+      + '<td style="text-align:center;">' + escapeHtml(p.u||'') + '</td>'
+      + '<td style="text-align:right;color:#2e7d32;font-weight:bold;">' + formatPrice(p.p) + '</td>'
+      + (owner ? '<td style="text-align:right;color:#c0392b;">' + formatPrice(p.v) + '</td>' : '')
+      + '<td style="text-align:center;">' + (p.t||0) + '</td>'
+      + '<td style="text-align:center;"><button class="badd" onclick="event.stopPropagation();selectProduct(' + gi + ')">+ Chọn</button></td>'
+      + '</tr>';
+  }).join('');
+  resultsDiv.innerHTML = '<table><thead><tr><th>Tên sản phẩm</th><th style="text-align:center;">ĐVT</th>'
+    + '<th style="text-align:right;">Giá bán</th>' + (owner ? '<th style="text-align:right;">Giá vốn</th>' : '')
+    + '<th style="text-align:center;">Tồn</th><th style="text-align:center;">&nbsp;</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + (results.length > shown.length ? '<div id="searchAddHint">… còn ' + (results.length - shown.length) + ' sản phẩm nữa — gõ thêm chữ để lọc gọn hơn.</div>' : '');
   resultsDiv.style.display = 'block';
 }
 
@@ -2233,18 +2254,18 @@ function updateQuoteTable() {
     var profColor = profit < 0 ? '#c0392b' : '#2e7d32';
     return '<tr>'
       + '<td>' + (itemIdx + 1) + '</td>'
-      + '<td><input type="text" value="' + escapeHtml(item.name) + '" onchange="updateItem(' + itemIdx + ', \'name\', this.value)" placeholder="Tên sản phẩm" style="width:150px;font-size:12px;"></td>'
-      + '<td><textarea rows="2" style="width:150px;font-size:12px;" placeholder="Mô tả" onchange="updateItem(' + itemIdx + ', \'description\', this.value)">' + escapeHtml(item.description || '') + '</textarea></td>'
+      + '<td><textarea rows="2" class="qexp" style="width:150px;" placeholder="Tên sản phẩm" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}" onchange="updateItem(' + itemIdx + ', \'name\', this.value.replace(/\\s+/g,\' \').trim())">' + escapeHtml(item.name) + '</textarea></td>'
+      + '<td><textarea rows="2" class="qexp" style="width:150px;" placeholder="Mô tả" onchange="updateItem(' + itemIdx + ', \'description\', this.value)">' + escapeHtml(item.description || '') + '</textarea></td>'
       + '<td style="text-align:center;">' + (item.img ? '<img src="' + item.img + '" style="width:50px;height:50px;object-fit:cover;border-radius:4px;display:block;margin:0 auto 4px;">' : '') + '<input type="file" accept="image/*" style="width:90px;font-size:11px;" onchange="handleImageUpload(' + itemIdx + ', this)"></td>'
-      + '<td><input type="text" value="' + escapeHtml(item.unit) + '" onchange="updateItem(' + itemIdx + ', \'unit\', this.value)" placeholder="ĐVT" style="width:55px;font-size:12px;"></td>'
+      + '<td><input type="text" value="' + escapeHtml(item.unit) + '" onchange="updateItem(' + itemIdx + ', \'unit\', this.value)" placeholder="ĐVT" style="width:42px;font-size:12px;padding:4px 3px;text-align:center;"></td>'
       + '<td><input type="number" value="' + qty + '" onchange="updateItem(' + itemIdx + ', \'qty\', this.value)" style="width:55px;"></td>'
-      + '<td><input type="text" list="nccListAll" value="' + escapeHtml(item.supplier || '') + '" onchange="updateItem(' + itemIdx + ', \'supplier\', this.value)" placeholder="Nhà cung cấp" style="width:130px;font-size:12px;"></td>'
+      + '<td><input type="text" list="nccListAll" class="qexp qexp-sm" value="' + escapeHtml(item.supplier || '') + '" onchange="updateItem(' + itemIdx + ', \'supplier\', this.value)" placeholder="Nhà cung cấp" style="width:120px;"></td>'
       + (owner ? ('<td><input type="text" inputmode="numeric" id="qi_cost_' + itemIdx + '" value="' + fmtThousand(cost) + '" oninput="onPriceInput(' + itemIdx + ', \'cost\', this)" onchange="updateItem(' + itemIdx + ', \'cost\', this.value)" placeholder="Giá gốc" style="width:135px;font-size:16px;font-weight:bold;text-align:right;padding:7px 8px;background:#fff7e6;"></td>') : '')
       + '<td><input type="text" inputmode="numeric" id="qi_price_' + itemIdx + '" value="' + fmtThousand(price) + '" oninput="onPriceInput(' + itemIdx + ', \'price\', this)" onchange="updateItem(' + itemIdx + ', \'price\', this.value)" placeholder="Giá bán" style="width:135px;font-size:16px;font-weight:bold;text-align:right;padding:7px 8px;"></td>'
       + '<td class="text-right" id="qi_amt_' + itemIdx + '">' + formatPrice(qty * price) + '</td>'
       + (owner ? ('<td class="text-right" id="qi_prof_' + itemIdx + '" style="color:' + profColor + ';font-weight:bold;">' + formatPrice(profit) + '</td>') : '')
       + (owner ? ('<td class="text-right" id="qi_pct_' + itemIdx + '" style="color:' + profColor + ';font-weight:bold;">' + pctTxt + '</td>') : '')
-      + '<td><input type="text" value="' + escapeHtml(item.note) + '" onchange="updateItem(' + itemIdx + ', \'note\', this.value)" style="width:80px;"></td>'
+      + '<td><textarea rows="2" class="qexp" style="width:90px;" placeholder="Ghi chú" onchange="updateItem(' + itemIdx + ', \'note\', this.value)">' + escapeHtml(item.note || '') + '</textarea></td>'
       + '<td><button onclick="removeItem(' + itemIdx + ')" style="background: #c0392b;">Xóa</button></td>'
       + '</tr>';
   }).join('');
