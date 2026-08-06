@@ -207,10 +207,10 @@ header p{ font-size:12px; opacity:.9; }
               <input type="text" id="sp_new_ten" placeholder="Tên sản phẩm *">
               <input type="text" id="sp_new_ma" placeholder="Mã (bỏ trống = tự tạo)">
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:8px;margin-top:8px;">
-              <input type="text" id="sp_new_dvt" placeholder="ĐVT (Cái, Bộ...)">
-              <input type="number" id="sp_new_gianhap" placeholder="Giá nhập">
-              <input type="number" id="sp_new_gia" placeholder="Giá bán">
+            <div style="display:grid;grid-template-columns:1fr 1.3fr 1.3fr 2fr;gap:8px;margin-top:8px;">
+              <input type="text" id="sp_new_dvt" placeholder="ĐVT">
+              <input type="text" inputmode="numeric" id="sp_new_gianhap" placeholder="Giá nhập" oninput="this.value=fmtThousand(this.value)" style="text-align:right;font-weight:bold;">
+              <input type="text" inputmode="numeric" id="sp_new_gia" placeholder="Giá bán" oninput="this.value=fmtThousand(this.value)" style="text-align:right;font-weight:bold;">
               <input type="text" id="sp_new_mota" placeholder="Mô tả (tuỳ chọn)">
             </div>
             <button onclick="spAddOne()" style="margin-top:8px;background:#2e7d32;">➕ Thêm</button>
@@ -4254,7 +4254,8 @@ function spMakeCode(name){ var base = normalizeVN(name).toUpperCase().replace(/[
 function spAddProduct(o){
   var ten=(o.n||'').toString().trim(); if(!ten) return false;
   var ma=(o.c||'').toString().trim() || spMakeCode(ten);
-  var prod={ n:ten, c:ma, u:(o.u||'').toString().trim()||'Cái', p:(Number(o.p)||0), v:(Number(o.v)||0), t:0, a:[], img:'', desc:(o.desc||'').toString().trim() };
+  var _num=function(x){ var s=String(x==null?'':x).replace(/[^\d]/g,''); return s?parseInt(s,10):0; };
+  var prod={ n:ten, c:ma, u:(o.u||'').toString().trim()||'Cái', p:_num(o.p), v:_num(o.v), t:0, a:[], img:'', desc:(o.desc||'').toString().trim() };
   var ex=appData.s.find(function(x){return x.c===ma;});
   if(ex){ ex.n=prod.n; ex.u=prod.u; ex.p=prod.p; if(prod.v) ex.v=prod.v; ex.desc=prod.desc; prod.v=ex.v||prod.v; } else { appData.s.push(prod); }
   spExtra = spExtra.filter(function(x){return x.c!==ma;}); spExtra.push(prod); saveSpExtra();
