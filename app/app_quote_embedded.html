@@ -2125,7 +2125,7 @@ function htPaintButtons(root){
     if(!t) continue;
     var cls='htb-soft';                                   /* mặc định: việc phụ */
     if(/xóa|xoá|huỷ|hủy|gỡ bỏ|bỏ ảnh/i.test(t)) cls='htb-del';                        /* nguy hiểm */
-    else if(/pdf/i.test(t)) cls='htb-hero';                                            /* QUAN TRỌNG NHẤT */
+    else if(/^📄\s*pdf|xuất báo giá pdf|in\s*\/\s*lưu pdf|^🖨/i.test(t)) cls='htb-hero'; /* QUAN TRỌNG NHẤT: xuất/in PDF */
     else if(/^💾|lưu báo giá|^lưu$|lưu đơn|đăng nhập/i.test(t)) cls='htb-save2';        /* QUAN TRỌNG: lưu */
     else if(/thêm|tạo|cập nhật|nạp|gộp|chọn|áp dụng|lưu/i.test(t)) cls='htb-main';      /* việc chính */
     b.classList.remove('htb-hero','htb-save2','htb-main','htb-soft','htb-ghost','htb-del','htb-save','htb-out','htb-find');
