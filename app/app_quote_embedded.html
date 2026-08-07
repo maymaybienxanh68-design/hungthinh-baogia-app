@@ -84,6 +84,20 @@ button{ border-radius:8px; transition:filter .12s, box-shadow .12s; }
 button:hover{ filter:brightness(1.08); }
 button:active{ filter:brightness(.94); }
 button:disabled{ opacity:.5; cursor:not-allowed; filter:none; }
+/* ===== THANH TIÊU ĐỀ NỔI BẬT ===== */
+header{ background:linear-gradient(100deg,#0b3352 0%,#17557f 45%,#2c7fb8 100%) !important;
+  padding:16px 18px 14px !important; border-bottom:3px solid #e8590c !important;
+  box-shadow:0 4px 18px rgba(0,0,0,.35) !important; }
+header h1{ font-size:27px; font-weight:900; letter-spacing:.6px; line-height:1.2;
+  text-shadow:0 2px 6px rgba(0,0,0,.45); }
+header p{ margin-top:5px; font-size:12.5px; font-weight:700; letter-spacing:2.2px;
+  text-transform:uppercase; color:#bcd9f0; }
+@media (max-width:640px){
+  header{ padding:11px 12px 10px !important; }
+  header h1{ font-size:20px; }
+  header p{ font-size:10.5px; letter-spacing:1.4px; }
+}
+
 /* ===== NÚT: 4 CẤP ĐỘ — càng quan trọng càng nổi ===== */
 button{ font-weight:600; }
 
