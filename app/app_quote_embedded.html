@@ -84,13 +84,38 @@ button{ border-radius:8px; transition:filter .12s, box-shadow .12s; }
 button:hover{ filter:brightness(1.08); }
 button:active{ filter:brightness(.94); }
 button:disabled{ opacity:.5; cursor:not-allowed; filter:none; }
-/* Hệ nút tối giản: 1 nút chính đậm — còn lại nền trắng viền xám — nút xoá viền đỏ */
+/* ===== NÚT: 4 CẤP ĐỘ — càng quan trọng càng nổi ===== */
 button{ font-weight:600; }
-.htb-main{ background:#1f5c8a !important; color:#fff !important; border:1px solid #1f5c8a !important; }
-.htb-ghost{ background:#fff !important; color:#3c5568 !important; border:1px solid #ccd8e3 !important; }
-.htb-ghost:hover{ background:#f2f7fb !important; border-color:#a8c1d6 !important; }
-.htb-del{ background:#fff !important; color:#c0392b !important; border:1px solid #e3b4ae !important; }
-.htb-del:hover{ background:#fdf3f2 !important; border-color:#c0392b !important; }
+
+/* Cấp 1 — VIỆC QUAN TRỌNG NHẤT (Xuất PDF, Lưu): to nhất, màu đậm, có bóng */
+.htb-hero{ background:linear-gradient(180deg,#e8590c,#c0392b) !important; color:#fff !important;
+  border:none !important; font-size:15.5px !important; font-weight:800 !important;
+  padding:13px 24px !important; border-radius:9px !important;
+  box-shadow:0 4px 12px rgba(192,57,43,.35) !important; letter-spacing:.2px; }
+.htb-hero:hover{ box-shadow:0 6px 18px rgba(192,57,43,.45) !important; transform:translateY(-1px); }
+.htb-save2{ background:linear-gradient(180deg,#2fa14f,#1e7e34) !important; color:#fff !important;
+  border:none !important; font-size:15.5px !important; font-weight:800 !important;
+  padding:13px 24px !important; border-radius:9px !important;
+  box-shadow:0 4px 12px rgba(30,126,52,.35) !important; }
+.htb-save2:hover{ box-shadow:0 6px 18px rgba(30,126,52,.45) !important; transform:translateY(-1px); }
+
+/* Cấp 2 — việc chính hay dùng: xanh thương hiệu, chữ trắng */
+.htb-main{ background:#1f5c8a !important; color:#fff !important; border:1px solid #1a5079 !important;
+  font-weight:700 !important; box-shadow:0 2px 6px rgba(31,92,138,.22) !important; }
+.htb-main:hover{ background:#17547e !important; }
+
+/* Cấp 3 — việc phụ: xanh nhạt, chữ xanh đậm (nhìn là biết phụ) */
+.htb-soft{ background:#e9f2fa !important; color:#1c5580 !important; border:1px solid #c9dcec !important; font-weight:600 !important; }
+.htb-soft:hover{ background:#dcebf8 !important; border-color:#a7c8e4 !important; }
+
+/* Cấp 4 — nguy hiểm: đỏ rõ ràng */
+.htb-del{ background:#c0392b !important; color:#fff !important; border:1px solid #a5301f !important; font-weight:700 !important; }
+.htb-del:hover{ background:#a5301f !important; }
+
+/* Nút xoá nhỏ nằm trong bảng: đỏ nhạt cho đỡ chói */
+.quote-table .htb-del, table .htb-del{ background:#fdecea !important; color:#c0392b !important;
+  border:1px solid #f0b7b0 !important; box-shadow:none !important; }
+.quote-table .htb-del:hover, table .htb-del:hover{ background:#fadbd8 !important; }
 
 /* Chữ giải thích: mặc định ẩn, bấm dấu ? mới hiện */
 .ht-help{ display:none; background:#f4f8fc; border-left:3px solid #9db8d6; padding:10px 12px;
@@ -2098,10 +2123,12 @@ function htPaintButtons(root){
     if(b.classList.contains('tab-btn')||b.classList.contains('tool-ic-btn')||b.classList.contains('badd')||b.classList.contains('ht-qmark')) continue;
     var t=(b.textContent||'').trim();
     if(!t) continue;
-    var cls='htb-ghost';
-    if(/xóa|xoá|huỷ|hủy|gỡ bỏ|bỏ ảnh/i.test(t)) cls='htb-del';
-    else if(/lưu|đăng nhập|tạo đơn mới|^📄 pdf$|^➕ thêm$|^thêm$/i.test(t)) cls='htb-main';
-    b.classList.remove('htb-main','htb-ghost','htb-del','htb-save','htb-out','htb-find');
+    var cls='htb-soft';                                   /* mặc định: việc phụ */
+    if(/xóa|xoá|huỷ|hủy|gỡ bỏ|bỏ ảnh/i.test(t)) cls='htb-del';                        /* nguy hiểm */
+    else if(/pdf/i.test(t)) cls='htb-hero';                                            /* QUAN TRỌNG NHẤT */
+    else if(/^💾|lưu báo giá|^lưu$|lưu đơn|đăng nhập/i.test(t)) cls='htb-save2';        /* QUAN TRỌNG: lưu */
+    else if(/thêm|tạo|cập nhật|nạp|gộp|chọn|áp dụng|lưu/i.test(t)) cls='htb-main';      /* việc chính */
+    b.classList.remove('htb-hero','htb-save2','htb-main','htb-soft','htb-ghost','htb-del','htb-save','htb-out','htb-find');
     b.classList.add(cls);
   }
 }
