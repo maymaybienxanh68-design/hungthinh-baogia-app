@@ -84,6 +84,38 @@ button{ border-radius:8px; transition:filter .12s, box-shadow .12s; }
 button:hover{ filter:brightness(1.08); }
 button:active{ filter:brightness(.94); }
 button:disabled{ opacity:.5; cursor:not-allowed; filter:none; }
+/* ================= GÓI B — BẢNG & BIỂU MẪU (áp dụng cả 7 tab) ================= */
+/* B1. Bảng: kẻ sọc xen kẽ, dòng chuột đi qua sáng lên, tiêu đề dính khi cuộn */
+.card table{ font-size:14px; }
+.card table th{ background:#eef4fa !important; color:#28475f !important; font-size:12.5px; font-weight:700;
+  text-transform:uppercase; letter-spacing:.3px; white-space:nowrap; padding:10px 9px;
+  border-bottom:2px solid #d3e2ee; position:sticky; top:0; z-index:2; }
+.card table td{ padding:9px; border-bottom:1px solid #edf1f5; vertical-align:middle; }
+.card table tbody tr:nth-child(even) td{ background:#fafcfe; }
+.card table tbody tr:hover td{ background:#eaf4ff; }
+.card table tbody tr:last-child td{ border-bottom:none; }
+
+/* B2. Con số: căn phải, chữ số đều nhau, không gãy dòng */
+.card table{ font-variant-numeric:tabular-nums; }
+.card table td.text-right, .card table th.text-right,
+.card table td.money, .card table th.money{ text-align:right; white-space:nowrap; }
+.card table td.qty, .card table th.qty, .card table td.c, .card table th.c{ text-align:center; }
+.total-row td{ background:#eef4fa !important; font-size:14.5px; font-weight:800; color:#12456b; white-space:nowrap; }
+
+/* B3. Tiêu đề khối trong biểu mẫu: có vạch màu bên trái cho dễ phân đoạn */
+.card h3{ border-left:4px solid #1f5c8a; padding-left:10px; color:#12456b; }
+.form-group{ margin-bottom:14px; }
+
+/* B4. Ô bắt buộc (placeholder có dấu *): nền vàng nhạt khi còn trống */
+.ht-req:placeholder-shown{ border-color:#e9c46a !important; background:#fffdf3 !important; }
+.ht-req{ border-width:1px; }
+.ht-invalid{ border-color:#c0392b !important; background:#fdf3f2 !important; }
+
+/* B5. Bảng chưa có dữ liệu: hiện 1 dòng hướng dẫn thay vì để trắng */
+.ht-empty td{ text-align:center !important; color:#8fa3b3 !important; font-style:italic;
+  padding:22px 10px !important; background:#fbfdff !important; }
+.ht-empty:hover td{ background:#fbfdff !important; }
+
 /* ===== THANH TIÊU ĐỀ NỔI BẬT ===== */
 header{ background:linear-gradient(100deg,#0b3352 0%,#17557f 45%,#2c7fb8 100%) !important;
   padding:16px 18px 14px !important; border-bottom:3px solid #e8590c !important;
@@ -243,7 +275,7 @@ header p{ font-size:12px; opacity:.9; }
     <h2>🔐 Đăng nhập</h2>
     <div class="form-group">
       <label>Mật khẩu:</label>
-      <input type="password" id="pin" placeholder="Nhập mật khẩu" onkeyup="if(event.key==='Enter')doLogin()">
+      <input type="password" id="pin" placeholder="Nhập mật khẩu" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" onkeyup="if(event.key==='Enter')doLogin()">
     </div>
     <button onclick="doLogin()">Đăng nhập</button>
     <div id="loginError" class="error hidden"></div>
@@ -2164,17 +2196,64 @@ function htCollapseHelp(){
     h.appendChild(q);
   }
 }
+/* ===== GÓI B — B2: cột tiền tự căn phải, cột số lượng tự căn giữa ===== */
+function htAlignTables(){
+  var tables=document.querySelectorAll('.card table:not([data-hta])');
+  for(var i=0;i<tables.length;i++){
+    var tb=tables[i]; tb.setAttribute('data-hta','1');
+    var ths=tb.querySelectorAll('thead th'); if(!ths.length) continue;
+    var money=[], qty=[];
+    for(var j=0;j<ths.length;j++){
+      var h=(ths[j].textContent||'').toLowerCase();
+      if(/giá|tiền|thành tiền|lợi nhuận|%|đơn giá|tổng|chi phí|cước/.test(h)){ money.push(j); ths[j].classList.add('text-right'); }
+      else if(/sl|số lượng|tồn|stt|đvt|ngày|trạng thái/.test(h)){ qty.push(j); ths[j].classList.add('c'); }
+    }
+    if(!money.length && !qty.length) continue;
+    var rows=tb.querySelectorAll('tbody tr');
+    for(var r=0;r<rows.length;r++){
+      var tds=rows[r].children;
+      for(var m=0;m<money.length;m++){ var c1=tds[money[m]]; if(c1 && !c1.querySelector('input,textarea,select,button')) c1.classList.add('text-right'); }
+      for(var q=0;q<qty.length;q++){ var c2=tds[qty[q]]; if(c2 && !c2.querySelector('input,textarea,select,button')) c2.classList.add('c'); }
+    }
+  }
+}
+
+/* ===== GÓI B — B4: ô bắt buộc (có dấu * trong gợi ý) tô nền vàng khi còn trống ===== */
+function htMarkRequired(){
+  var els=document.querySelectorAll('input[placeholder*="*"]:not([data-htr]),textarea[placeholder*="*"]:not([data-htr])');
+  for(var i=0;i<els.length;i++){ els[i].setAttribute('data-htr','1'); els[i].classList.add('ht-req'); }
+}
+
+/* ===== GÓI B — B5: bảng chưa có dữ liệu thì hiện 1 dòng hướng dẫn ===== */
+var HT_EMPTY_MSG={ quoteBody:'Chưa có sản phẩm nào — gõ tên ở ô "Tìm sản phẩm" phía trên, hoặc bấm "➕ Dòng trống".' };
+function htEmptyRows(){
+  for(var id in HT_EMPTY_MSG){
+    var tb=document.getElementById(id); if(!tb) continue;
+    var real=tb.querySelector('tr:not(.ht-empty)');
+    var hint=tb.querySelector('tr.ht-empty');
+    if(!real && !hint){
+      var head=tb.parentNode ? tb.parentNode.querySelectorAll('thead th').length : 1;
+      var tr=document.createElement('tr'); tr.className='ht-empty';
+      tr.innerHTML='<td colspan="'+(head||12)+'">'+HT_EMPTY_MSG[id]+'</td>';
+      tb.appendChild(tr);
+    } else if(real && hint){ hint.parentNode.removeChild(hint); }
+  }
+}
+
 function htWatchButtons(){
-  htPaintButtons(); htCollapseHelp();
+  htPaintButtons(); htCollapseHelp(); htAlignTables(); htMarkRequired(); htEmptyRows();
   try{
     var tm=null;
-    new MutationObserver(function(){ clearTimeout(tm); tm=setTimeout(function(){ htPaintButtons(); htCollapseHelp(); },120); })
-      .observe(document.body,{childList:true,subtree:true});
+    new MutationObserver(function(){ clearTimeout(tm); tm=setTimeout(function(){
+      htPaintButtons(); htCollapseHelp(); htAlignTables(); htMarkRequired(); htEmptyRows();
+    },120); }).observe(document.body,{childList:true,subtree:true});
   }catch(e){}
 }
 
 window.onload = function() {
   htWatchButtons();
+  /* Không để trình duyệt điền sẵn mật khẩu — luôn bắt đầu bằng ô trống */
+  try{ var _p=document.getElementById('pin'); if(_p){ _p.value=''; setTimeout(function(){ _p.value=''; },300); } }catch(e){}
   loadNccExtra();
   loadKhExtra();
   loadKhBGExtra();
