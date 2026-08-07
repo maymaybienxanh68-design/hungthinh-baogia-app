@@ -84,6 +84,46 @@ button{ border-radius:8px; transition:filter .12s, box-shadow .12s; }
 button:hover{ filter:brightness(1.08); }
 button:active{ filter:brightness(.94); }
 button:disabled{ opacity:.5; cursor:not-allowed; filter:none; }
+/* ================= GÓI C — ĐIỆN THOẠI · PHÍM TẮT · TÌM NHANH ================= */
+/* C4. Ô tìm nhanh trên thanh tab + bảng kết quả nổi */
+.ht-quick{ display:flex; align-items:center; gap:8px; margin:0 0 12px; }
+.ht-quick input{ flex:1; padding:11px 14px; font-size:15px; border:1px solid #cbd8e6; border-radius:10px;
+  background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='%237b8b99' viewBox='0 0 24 24'><path d='M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/></svg>") no-repeat 12px center;
+  padding-left:38px; }
+.ht-quick .k{ font-size:11.5px; color:#8fa3b3; border:1px solid #dbe5ee; border-radius:5px; padding:3px 7px; white-space:nowrap; }
+#htQuickBox{ display:none; margin:-6px 0 14px; border:1px solid #cbd8e6; border-radius:10px; background:#fff;
+  max-height:420px; overflow:auto; box-shadow:0 8px 24px rgba(0,0,0,.16); }
+#htQuickBox.show{ display:block; }
+#htQuickBox .g{ padding:7px 12px; background:#eef4fa; font-size:11.5px; font-weight:800; color:#3c5568;
+  text-transform:uppercase; letter-spacing:.5px; position:sticky; top:0; }
+#htQuickBox .it{ padding:10px 12px; border-top:1px solid #f0f4f8; cursor:pointer; display:flex; justify-content:space-between; gap:12px; }
+#htQuickBox .it:hover{ background:#eaf4ff; }
+#htQuickBox .it b{ color:#14405e; font-weight:700; }
+#htQuickBox .it .s{ font-size:12px; color:#7b8b99; }
+#htQuickBox .none{ padding:14px; color:#8fa3b3; font-size:13.5px; }
+
+@media (max-width:640px){
+  /* C2. Nút và ô nhập đủ to để bấm bằng ngón tay, không bị zoom nhảy */
+  button{ min-height:44px; padding:11px 16px; font-size:14.5px; }
+  input,select,textarea{ font-size:16px; }
+  .quote-table button{ min-height:38px; }
+  .ht-quick .k{ display:none; }
+
+  /* C1. Bảng chỉ đọc: mỗi dòng thành 1 thẻ dọc, không phải cuộn ngang */
+  .card table.ht-cardify{ display:block; }
+  .card table.ht-cardify thead{ display:none; }
+  .card table.ht-cardify tbody,.card table.ht-cardify tr,.card table.ht-cardify td{ display:block; width:100%; }
+  .card table.ht-cardify tr{ border:1px solid #dfe8f0; border-radius:10px; margin-bottom:10px;
+    background:#fff; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  .card table.ht-cardify tbody tr:nth-child(even) td{ background:transparent; }
+  .card table.ht-cardify td{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
+    padding:9px 12px; border-bottom:1px solid #f2f6fa; text-align:right !important; }
+  .card table.ht-cardify td:last-child{ border-bottom:none; }
+  .card table.ht-cardify td::before{ content:attr(data-label); font-weight:700; color:#5b7183;
+    font-size:12.5px; text-align:left; flex:0 0 42%; }
+  .card table.ht-cardify td:empty{ display:none; }
+}
+
 /* ================= GÓI B — BẢNG & BIỂU MẪU (áp dụng cả 7 tab) ================= */
 /* B1. Bảng: kẻ sọc xen kẽ, dòng chuột đi qua sáng lên, tiêu đề dính khi cuộn */
 .card table{ font-size:14px; }
@@ -2240,14 +2280,161 @@ function htEmptyRows(){
   }
 }
 
+/* ===== GÓI C — C1: bảng CHỈ ĐỌC trên điện thoại thành thẻ dọc (gắn nhãn cho từng ô) ===== */
+function htCardifyTables(){
+  var tables=document.querySelectorAll('.card table:not([data-htm])');
+  for(var i=0;i<tables.length;i++){
+    var tb=tables[i];
+    var ths=tb.querySelectorAll('thead th'); if(!ths.length) continue;
+    tb.setAttribute('data-htm','1');
+    if(tb.querySelector('tbody input,tbody textarea,tbody select')) continue; /* bảng có ô nhập -> giữ nguyên, cuộn ngang */
+    var labs=[]; for(var j=0;j<ths.length;j++) labs.push((ths[j].textContent||'').trim());
+    tb.classList.add('ht-cardify');
+    var rows=tb.querySelectorAll('tbody tr');
+    for(var r=0;r<rows.length;r++){
+      var tds=rows[r].children;
+      for(var c=0;c<tds.length;c++) if(labs[c]) tds[c].setAttribute('data-label',labs[c]);
+    }
+  }
+}
+
+/* ===== GÓI C — C3: phím tắt ===== */
+function htHotkeys(){
+  document.addEventListener('keydown', function(e){
+    var k=(e.key||'').toLowerCase();
+    if(e.ctrlKey && k==='s'){ e.preventDefault(); if(typeof saveQuote==='function'){ saveQuote(); } return; }
+    if(e.ctrlKey && k==='p'){ e.preventDefault(); if(typeof printBaoGiaOffline==='function'){ printBaoGiaOffline(); } return; }
+    if(e.ctrlKey && k==='k'){ e.preventDefault(); var q=document.getElementById('htQuickInput'); if(q){ q.focus(); q.select(); } return; }
+    if(k==='escape'){ var b=document.getElementById('htQuickBox'); if(b) b.classList.remove('show');
+      if(typeof dsCloseAnyModal==='function'){ try{ dsCloseAnyModal(); }catch(_){} } }
+  });
+}
+
+/* ===== GÓI C — C4: ô TÌM NHANH (sản phẩm · khách hàng · báo giá đã lưu) ===== */
+function htBuildQuickSearch(){
+  if(document.getElementById('htQuickInput')) return;
+  var tabs=document.querySelector('.tabs'); if(!tabs || !tabs.parentNode) return;
+  var wrap=document.createElement('div'); wrap.className='ht-quick';
+  wrap.innerHTML='<input id="htQuickInput" type="text" placeholder="Tìm nhanh: sản phẩm · khách hàng · báo giá đã lưu" autocomplete="off">'
+    +'<span class="k">Ctrl + K</span>';
+  var box=document.createElement('div'); box.id='htQuickBox';
+  tabs.parentNode.insertBefore(wrap, tabs.nextSibling);
+  wrap.parentNode.insertBefore(box, wrap.nextSibling);
+  var inp=document.getElementById('htQuickInput');
+  inp.addEventListener('input', function(){ htQuickRun(this.value); });
+  inp.addEventListener('focus', function(){ if(this.value.trim()) htQuickRun(this.value); });
+  document.addEventListener('mousedown', function(ev){
+    if(!box.contains(ev.target) && ev.target!==inp) box.classList.remove('show');
+  });
+}
+function htQuickRun(kw){
+  var box=document.getElementById('htQuickBox'); if(!box) return;
+  var k=normalizeVN((kw||'').trim());
+  if(k.length<2){ box.classList.remove('show'); box.innerHTML=''; return; }
+  var html='';
+  /* Sản phẩm */
+  var sp=(appData.s||[]).filter(function(p){
+    return (p.n&&normalizeVN(p.n).indexOf(k)>=0) || (p.c&&normalizeVN(p.c).indexOf(k)>=0)
+      || (p.a&&p.a.some(function(a){return normalizeVN(a).indexOf(k)>=0;}));
+  }).slice(0,8);
+  if(sp.length){
+    html+='<div class="g">Sản phẩm ('+sp.length+')</div>';
+    sp.forEach(function(p){
+      html+='<div class="it" onclick="htQuickGoProduct('+appData.s.indexOf(p)+')"><span><b>'+escapeHtml(p.n)+'</b><div class="s">'+escapeHtml(p.c||'')+' · Tồn '+(p.t||0)+'</div></span><span class="s">'+formatPrice(p.p)+'</span></div>';
+    });
+  }
+  /* Khách hàng */
+  var kh=(appData.kh||[]).filter(function(x){
+    return (x.ten&&normalizeVN(x.ten).indexOf(k)>=0) || (x.sdt&&String(x.sdt).indexOf(kw.trim())>=0)
+      || (x.congty&&normalizeVN(x.congty).indexOf(k)>=0);
+  }).slice(0,6);
+  if(kh.length){
+    html+='<div class="g">Khách hàng ('+kh.length+')</div>';
+    kh.forEach(function(x){
+      html+='<div class="it" onclick="htQuickGoCustomer('+appData.kh.indexOf(x)+')"><span><b>'+escapeHtml(x.ten||'')+'</b><div class="s">'+escapeHtml(x.diachi||'')+'</div></span><span class="s">'+escapeHtml(x.sdt||'')+'</span></div>';
+    });
+  }
+  /* Báo giá đã lưu */
+  var bg=(savedQuotes||[]).filter(function(q){
+    return (q.customer&&normalizeVN(q.customer).indexOf(k)>=0) || (q.no&&normalizeVN(String(q.no)).indexOf(k)>=0);
+  }).slice(0,6);
+  if(bg.length){
+    html+='<div class="g">Báo giá đã lưu ('+bg.length+')</div>';
+    bg.forEach(function(q){
+      html+='<div class="it" onclick="htQuickGoTab(2)"><span><b>'+escapeHtml(q.customer||'(chưa có tên)')+'</b><div class="s">'+escapeHtml(String(q.no||''))+' · '+escapeHtml(String(q.date||''))+'</div></span><span class="s">xem</span></div>';
+    });
+  }
+  box.innerHTML = html || '<div class="none">Không tìm thấy gì khớp "'+escapeHtml(kw)+'".</div>';
+  box.classList.add('show');
+}
+function htQuickGoTab(i){
+  document.querySelectorAll('.tab-content').forEach(function(e){ e.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(e,j){ e.classList.toggle('active', j===i); });
+  var t=document.getElementById('tab'+i); if(t) t.classList.add('active');
+  if(i===2 && typeof loadSavedQuotes==='function') loadSavedQuotes();
+  var b=document.getElementById('htQuickBox'); if(b) b.classList.remove('show');
+  window.scrollTo(0,0);
+}
+function htQuickGoProduct(idx){
+  var p=appData.s[idx]; if(!p) return;
+  htQuickGoTab(0);
+  var s=document.getElementById('searchInput');
+  if(s){ s.value=p.n; if(typeof doSearch==='function') doSearch(); }
+  var q=document.getElementById('htQuickInput'); if(q) q.value='';
+}
+function htQuickGoCustomer(idx){
+  var kx=(appData.kh||[])[idx]; if(!kx) return;
+  var ten=kx.ten||'';
+  htQuickGoTab(1);
+  var a=document.getElementById('customerAddress'); if(a && kx.diachi) a.value=kx.diachi;
+  var p=document.getElementById('customerPhone'); if(p && kx.sdt) p.value=kx.sdt;
+  var c=document.getElementById('customerName');
+  if(c){ c.value=ten; if(typeof pickKhByName==='function'){ try{ pickKhByName(ten); }catch(e){} } }
+  var q=document.getElementById('htQuickInput'); if(q) q.value='';
+  htToast('Đã chọn khách: '+ten,'ok');
+}
+
+/* ===== GÓI C — C5: tự lưu nháp báo giá 30 giây/lần, mở lại hỏi khôi phục ===== */
+function htDraftSave(){
+  try{
+    if(typeof quoteData==='undefined' || !quoteData.items || !quoteData.items.length) return;
+    var g=function(id){ var e=document.getElementById(id); return e?e.value:''; };
+    localStorage.setItem('quoteDraft', JSON.stringify({
+      t:Date.now(), items:quoteData.items,
+      cust:g('customerName'), addr:g('customerAddress'), phone:g('customerPhone'), vat:g('quoteVat')
+    }));
+  }catch(e){}
+}
+function htDraftAsk(){
+  try{
+    var d=JSON.parse(localStorage.getItem('quoteDraft')||'null');
+    if(!d || !d.items || !d.items.length) return;
+    if(Date.now()-d.t > 7*24*3600*1000){ localStorage.removeItem('quoteDraft'); return; }
+    var gio=new Date(d.t).toLocaleString('vi-VN');
+    if(confirm('Có bản báo giá chưa xuất, lưu lúc '+gio+' ('+d.items.length+' sản phẩm).\n\nKhôi phục lại không?')){
+      quoteData.items=d.items;
+      var s=function(id,v){ var e=document.getElementById(id); if(e&&v) e.value=v; };
+      s('customerName',d.cust); s('customerAddress',d.addr); s('customerPhone',d.phone); s('quoteVat',d.vat);
+      if(typeof updateQuoteTable==='function') updateQuoteTable();
+      htToast('✅ Đã khôi phục báo giá đang làm dở.','ok');
+    } else { localStorage.removeItem('quoteDraft'); }
+  }catch(e){}
+}
+
 function htWatchButtons(){
-  htPaintButtons(); htCollapseHelp(); htAlignTables(); htMarkRequired(); htEmptyRows();
+  htPaintButtons(); htCollapseHelp(); htAlignTables(); htMarkRequired(); htEmptyRows(); htCardifyTables();
   try{
     var tm=null;
     new MutationObserver(function(){ clearTimeout(tm); tm=setTimeout(function(){
-      htPaintButtons(); htCollapseHelp(); htAlignTables(); htMarkRequired(); htEmptyRows();
+      htPaintButtons(); htCollapseHelp(); htAlignTables(); htMarkRequired(); htEmptyRows(); htCardifyTables();
     },120); }).observe(document.body,{childList:true,subtree:true});
   }catch(e){}
+  htBuildQuickSearch(); htHotkeys();
+  setInterval(htDraftSave, 30000);
+  /* chỉ hỏi khôi phục sau khi đã đăng nhập */
+  var _dtm=setInterval(function(){
+    if(typeof userData!=='undefined' && userData.loggedIn){ clearInterval(_dtm); setTimeout(htDraftAsk,600); }
+  }, 800);
 }
 
 window.onload = function() {
