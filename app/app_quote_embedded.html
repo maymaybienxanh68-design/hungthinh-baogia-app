@@ -84,12 +84,22 @@ button{ border-radius:8px; transition:filter .12s, box-shadow .12s; }
 button:hover{ filter:brightness(1.08); }
 button:active{ filter:brightness(.94); }
 button:disabled{ opacity:.5; cursor:not-allowed; filter:none; }
-.htb-save{ background:#2e7d32 !important; color:#fff !important; }
-.htb-del{ background:#c0392b !important; color:#fff !important; }
-.htb-out{ background:#1f5c8a !important; color:#fff !important; }
-.htb-find{ background:#0277bd !important; color:#fff !important; }
-.htb-neutral{ background:#8a97a3 !important; color:#fff !important; }
-.htb-legend{ font-size:12px; color:#7b8b99; margin-top:6px; }
+/* Hệ nút tối giản: 1 nút chính đậm — còn lại nền trắng viền xám — nút xoá viền đỏ */
+button{ font-weight:600; }
+.htb-main{ background:#1f5c8a !important; color:#fff !important; border:1px solid #1f5c8a !important; }
+.htb-ghost{ background:#fff !important; color:#3c5568 !important; border:1px solid #ccd8e3 !important; }
+.htb-ghost:hover{ background:#f2f7fb !important; border-color:#a8c1d6 !important; }
+.htb-del{ background:#fff !important; color:#c0392b !important; border:1px solid #e3b4ae !important; }
+.htb-del:hover{ background:#fdf3f2 !important; border-color:#c0392b !important; }
+
+/* Chữ giải thích: mặc định ẩn, bấm dấu ? mới hiện */
+.ht-help{ display:none; background:#f4f8fc; border-left:3px solid #9db8d6; padding:10px 12px;
+  border-radius:0 8px 8px 0; font-size:13.5px; color:#4a6274; margin:0 0 12px; }
+.ht-help.show{ display:block; }
+.ht-qmark{ display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px;
+  margin-left:8px; border-radius:50%; border:1px solid #c3d4e3; background:#fff; color:#5b7183;
+  font-size:13px; font-weight:700; cursor:pointer; vertical-align:middle; padding:0; }
+.ht-qmark:hover{ background:#eef4fa; color:#1f5c8a; }
 
 /* A6. Khung cuộn cho bảng rộng — bảng KHÔNG tràn ra ngoài thẻ trắng nữa */
 .container{ max-width:1280px; }
@@ -2079,28 +2089,45 @@ function htToast(msg, type, ms){
 var htNativeAlert = window.alert.bind(window);
 window.alert = function(m){ htToast(m); };
 
-/* ===== GÓI A — A3: nút tự tô màu theo loại việc ===== */
+/* ===== Nút: chỉ 3 kiểu — chính (đậm) · phụ (trắng) · xoá (viền đỏ) ===== */
 function htPaintButtons(root){
   var list=(root||document).querySelectorAll('button:not([data-htc])');
   for(var i=0;i<list.length;i++){
     var b=list[i];
     b.setAttribute('data-htc','1');
-    if(b.classList.contains('tab-btn')||b.classList.contains('tool-ic-btn')||b.classList.contains('badd')) continue;
+    if(b.classList.contains('tab-btn')||b.classList.contains('tool-ic-btn')||b.classList.contains('badd')||b.classList.contains('ht-qmark')) continue;
     var t=(b.textContent||'').trim();
     if(!t) continue;
-    var cls='';
-    if(/xóa|xoá|bỏ |huỷ|hủy|gỡ|xoa /i.test(t)) cls='htb-del';
-    else if(/lưu|thêm|nạp|cập nhật|gộp|đăng nhập|chọn|áp dụng/i.test(t)) cls='htb-save';
-    else if(/pdf|excel|xuất|in |tải|dữ liệu|từ file|từ ô dán|csv/i.test(t)) cls='htb-out';
-    else if(/tìm|sửa|quét|so sánh|đối soát|xem/i.test(t)) cls='htb-find';
-    if(cls){ b.classList.remove('htb-save','htb-del','htb-out','htb-find'); b.classList.add(cls); }
+    var cls='htb-ghost';
+    if(/xóa|xoá|huỷ|hủy|gỡ bỏ|bỏ ảnh/i.test(t)) cls='htb-del';
+    else if(/lưu|đăng nhập|tạo đơn mới|^📄 pdf$|^➕ thêm$|^thêm$/i.test(t)) cls='htb-main';
+    b.classList.remove('htb-main','htb-ghost','htb-del','htb-save','htb-out','htb-find');
+    b.classList.add(cls);
+  }
+}
+
+/* ===== Chữ giải thích: giấu đi, bấm dấu ? ở tiêu đề mới hiện ===== */
+function htCollapseHelp(){
+  var cards=document.querySelectorAll('.card');
+  for(var i=0;i<cards.length;i++){
+    var c=cards[i], h=c.querySelector('h2');
+    if(!h || h.getAttribute('data-hh')) continue;
+    var ps=[], n=c.children;
+    for(var j=0;j<n.length;j++){ if(n[j].tagName==='P' && (n[j].textContent||'').trim().length>40) ps.push(n[j]); }
+    if(!ps.length) continue;
+    h.setAttribute('data-hh','1');
+    for(var k=0;k<ps.length;k++) ps[k].classList.add('ht-help');
+    var q=document.createElement('button');
+    q.type='button'; q.className='ht-qmark'; q.textContent='?'; q.title='Xem hướng dẫn';
+    q.onclick=(function(list){ return function(){ for(var m=0;m<list.length;m++) list[m].classList.toggle('show'); }; })(ps);
+    h.appendChild(q);
   }
 }
 function htWatchButtons(){
-  htPaintButtons();
+  htPaintButtons(); htCollapseHelp();
   try{
     var tm=null;
-    new MutationObserver(function(){ clearTimeout(tm); tm=setTimeout(function(){ htPaintButtons(); },120); })
+    new MutationObserver(function(){ clearTimeout(tm); tm=setTimeout(function(){ htPaintButtons(); htCollapseHelp(); },120); })
       .observe(document.body,{childList:true,subtree:true});
   }catch(e){}
 }
